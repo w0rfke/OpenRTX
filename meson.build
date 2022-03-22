@@ -107,6 +107,10 @@ else
   tinyusb_dep = [ ]
 endif
 
+# littlefs, little fail-safe filesystem designed for microcontrollers
+littlefs_proj = subproject('littlefs')
+littlefs_dep  = littlefs_proj.get_variable('littlefs_dep')
+
 ##
 ## RTOS
 ##
@@ -277,9 +281,9 @@ linux_inc = inc + ['platform/targets/linux',
                    'platform/targets/linux/emulator']
 
 if not meson.is_cross_build()
-  sdl_dep = dependency('SDL2')
+  sdl_dep     = dependency('SDL2')
   threads_dep = dependency('threads')
-  linux_dep = [sdl_dep, threads_dep, codec2_dep]
+  linux_dep   = [sdl_dep, threads_dep, codec2_dep]
 else
   linux_dep = [ ]
 endif
@@ -463,7 +467,7 @@ md3x0_opts = {'sources' : md3x0_src,
               'cpp_args': md3x0_args,
               'link_args' : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_MDx.ld',
                              '-Wl,--print-memory-usage'],
-              'dependencies': [codec2_dep, tinyusb_dep],
+              'dependencies': [codec2_dep, tinyusb_dep, littlefs_dep],
               'include_directories': md3x0_inc}
 
 mduv3x0_opts = {'sources': mduv3x0_src,
@@ -471,7 +475,7 @@ mduv3x0_opts = {'sources': mduv3x0_src,
                 'cpp_args': mduv3x0_args,
                 'link_args' : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_MDx.ld',
                                '-Wl,--print-memory-usage'],
-                'dependencies': [codec2_dep, tinyusb_dep],
+                'dependencies': [codec2_dep, tinyusb_dep, littlefs_dep],
                 'include_directories': mduv3x0_inc}
 
 gd77_opts = {'sources': gd77_src,
