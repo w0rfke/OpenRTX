@@ -37,6 +37,7 @@
 
 // variables used by the filesystem
 static lfs_t lfs;
+static bool  initOk;
 
 // block device API
 static int lfs_W25Qx_read(const struct lfs_config *cfg, lfs_block_t block,
@@ -70,9 +71,11 @@ bool filesystem_init()
     W25Qx_init();
 
     if(lfs_mount(&lfs, &cfg) == 0)
-        return true;
+        initOk = true;
+    else
+        initOk = false;
 
-    return false;
+    return initOk;
 }
 
 bool filesystem_format()
@@ -87,6 +90,13 @@ void filesystem_terminate()
 {
     lfs_unmount(&lfs);
 }
+
+lfs_t *filesystem_getHandle()
+{
+    if(initOk == false) return NULL;
+    return &lfs;
+}
+
 
 
 /// Implementation of block device API ///

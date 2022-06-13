@@ -37,6 +37,7 @@
 // variables used by the filesystem
 static lfs_t          lfs;
 static lfs_testbd_t   bd;
+static bool           initOk;
 static const uint32_t lfs_testbd_cycles = 0;
 
 // configuration of the filesystem is provided by this struct
@@ -73,9 +74,11 @@ bool filesystem_init()
 
     // Mount the filesystem
     if(lfs_mount(&lfs, &cfg) == 0)
-        return true;
+        initOk = true;
+    else
+        initOk = false;
 
-    return false;
+    return initOk;
 }
 
 bool filesystem_format()
@@ -89,4 +92,10 @@ bool filesystem_format()
 void filesystem_terminate()
 {
     lfs_unmount(&lfs);
+}
+
+lfs_t *filesystem_getHandle()
+{
+    if(initOk == false) return NULL;
+    return &lfs;
 }
