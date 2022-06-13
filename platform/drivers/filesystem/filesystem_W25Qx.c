@@ -19,7 +19,6 @@
  ***************************************************************************/
 
 #include <interfaces/filesystem.h>
-#include <state.h>
 #include <hwconfig.h>
 #include <W25Qx.h>
 
@@ -66,21 +65,22 @@ const struct lfs_config cfg =
     .lookahead_size = LFS_LOOKAHEAD_SIZE,
 };
 
-int filesystem_init()
+bool filesystem_init()
 {
     W25Qx_init();
 
-    int err = lfs_mount(&lfs, &cfg);
-    if(err >= 0)
-        state.filesystem_ready = true;
-    else
-        state.filesystem_ready = false;
-    return err;
+    if(lfs_mount(&lfs, &cfg) == 0)
+        return true;
+
+    return false;
 }
 
-int filesystem_format()
+bool filesystem_format()
 {
-    return lfs_format(&lfs, &cfg);
+    if(lfs_format(&lfs, &cfg) == 0)
+        return true;
+
+    return false;
 }
 
 void filesystem_terminate()

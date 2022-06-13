@@ -42,16 +42,16 @@ extern "C" {
  * This function handles filesystem initialization.
  * To be called at power-on.
  *
- * @return Error code: 0 on success, -1 on error
+ * @return true if filesystem has been successfully initialised, false on error.
  */
-int filesystem_init();
+bool filesystem_init();
 
 /**
  * This function handles filesystem format.
  *
- * @return Error code: 0 on success, -1 on error
+ * @return true if filesystem has been successfully formatted, false on error.
  */
-int filesystem_format();
+bool filesystem_format();
 
 /**
  * This function handles filesystem de-initialization.

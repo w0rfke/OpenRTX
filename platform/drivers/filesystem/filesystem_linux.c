@@ -20,7 +20,6 @@
 
 #include <interfaces/filesystem.h>
 #include <bd/lfs_testbd.h>
-#include <state.h>
 #include <stdio.h>
 
 // Filesystem used: LittleFS
@@ -62,30 +61,29 @@ static const struct lfs_config cfg =
 
 static const struct lfs_testbd_config bdcfg =
 {
-    .erase_value        = LFS_ERASE_VALUE,
-    .erase_cycles       = LFS_ERASE_CYCLES,
-    .badblock_behavior  = LFS_BADBLOCK_BEHAVIOR,
-    .power_cycles       = lfs_testbd_cycles,
+    .erase_value       = LFS_ERASE_VALUE,
+    .erase_cycles      = LFS_ERASE_CYCLES,
+    .badblock_behavior = LFS_BADBLOCK_BEHAVIOR,
+    .power_cycles      = lfs_testbd_cycles,
 };
 
-int filesystem_init()
+bool filesystem_init()
 {
     lfs_testbd_createcfg(&cfg, "./lfs_test.bin", &bdcfg);
 
     // Mount the filesystem
-    int err = lfs_mount(&lfs, &cfg);
+    if(lfs_mount(&lfs, &cfg) == 0)
+        return true;
 
-    if(err >= 0)
-        state.filesystem_ready = true;
-    else
-        state.filesystem_ready = false;
-
-    return err;
+    return false;
 }
 
-int filesystem_format()
+bool filesystem_format()
 {
-    return lfs_format(&lfs, &cfg);
+    if(lfs_format(&lfs, &cfg) == 0)
+        return true;
+
+    return false;
 }
 
 void filesystem_terminate()
