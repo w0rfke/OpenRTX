@@ -62,7 +62,9 @@ typedef struct
     uint16_t   bank;
     uint8_t    rtxStatus;
 
+    #ifdef ENABLE_FILESYSTEM
     bool       filesystem_ready;
+    #endif
     bool       emergency;
     settings_t settings;
     gps_t      gps_data;

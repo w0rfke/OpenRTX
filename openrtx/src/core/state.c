@@ -67,7 +67,9 @@ void state_init()
     state.bank_enabled     = false;
     state.rtxStatus        = RTX_OFF;
     state.emergency        = false;
+    #ifdef ENABLE_FILESYSTEM
     state.filesystem_ready = false;
+    #endif
 
     // Force brightness field to be in range 0 - 100
     if(state.settings.brightness > 100) state.settings.brightness = 100;
