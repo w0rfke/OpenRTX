@@ -324,6 +324,22 @@ mduv3x0_inc = inc + stm32f405_inc + ['platform/targets/MD-UV3x0']
 mduv3x0_def = def + stm32f405_def + {'PLATFORM_MDUV3x0': '', 'timegm': 'mktime'}
 
 ##
+## Baofeng MD-1702
+##
+md1702_src = src + mdx_src + stm32f405_src + ['platform/drivers/NVM/nvmem_MDUV3x0.c',
+                                               'platform/drivers/NVM/spiFlash_MD3x.c',
+                                               'platform/drivers/CPS/cps_io_native_MDUV3x0.c',
+                                               'platform/targets/MD-1702/platform.c',
+                                               'platform/drivers/keyboard/keyboard_MD1702.c',
+                                               'platform/drivers/display/HX8353_MD3x.cpp',
+                                               'platform/drivers/baseband/radio_UV3x0.cpp',
+                                               'platform/drivers/baseband/AT1846S_UV3x0.cpp',
+                                               'platform/drivers/baseband/HR_C6000_UV3x0.cpp']
+
+md1702_inc = inc + stm32f405_inc + ['platform/targets/MD-1702']
+md1702_def = def + stm32f405_def + {'PLATFORM_MDUV3x0': '', 'timegm': 'mktime'}
+
+##
 ## TYT MD-9600
 ##
 md9600_src = src + mdx_src + stm32f405_src + ['platform/targets/MD-9600/platform.c',
@@ -421,6 +437,15 @@ foreach k, v : mduv3x0_def
   endif
 endforeach
 
+md1702_args = []
+foreach k, v : md1702_def
+  if v == ''
+    md1702_args += '-D@0@'.format(k)
+  else
+    md1702_args += '-D@0@=@1@'.format(k, v)
+  endif
+endforeach
+
 gd77_args = []
 foreach k, v : gd77_def
   if v == ''
@@ -480,6 +505,14 @@ mduv3x0_opts = {'sources': mduv3x0_src,
                 'dependencies': [codec2_dep],
                 'include_directories': mduv3x0_inc}
 
+md1702_opts = {'sources': md1702_src,
+                'c_args': md1702_args,
+                'cpp_args': md1702_args,
+                'link_args' : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_MD-1702.ld',
+                               '-Wl,--print-memory-usage'],
+                'dependencies': [codec2_dep],
+                'include_directories': md1702_inc}
+
 gd77_opts = {'sources': gd77_src,
              'c_args': gd77_args,
              'cpp_args': gd77_args,
@@ -533,6 +566,12 @@ targets = [
    'flashable': true,
    'wrap': 'UV3X0',
    'load_addr': '0x0800C000'},
+
+  {'name': 'md1702',
+   'opts': md1702_opts,
+   'flashable': true,
+   'wrap': '',
+   'load_addr': '0x08008000'},
 
   {'name': 'gd77',
    'opts': gd77_opts,
