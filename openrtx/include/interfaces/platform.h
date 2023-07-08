@@ -49,6 +49,7 @@ typedef enum
         RED,
         YELLOW,
         WHITE,
+        BLUE,
 } led_t;
 
 /**
