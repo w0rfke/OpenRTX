@@ -202,6 +202,29 @@ namespace miosix
 void IRQbspInit()
 {
 
+    //
+    // Configuration of PLLSAI to have 48MHz for USB and SDIO and 27.428MHz
+    // for LCD:
+    // - Input is HSE/8 = 1MHz
+    // - PLLSAI_N = 384
+    // - PLLSAI_P = 8
+    // - PLLSAI_Q = 2  (unused, set to a valid division factor)
+    // - PLLSAI_R = 7
+    // - Enable /2 divider on LCD clock line
+    //
+
+    RCC->PLLSAICFGR = (384 << 6)                // PLLSAI_N
+                    | (3 << 16)                 // PLLSAI_P
+                    | (2 << 24)                 // PLLSAI_Q
+                    | (7 << 28);                // PLLSAI_R
+
+    RCC->DCKCFGR    |=  RCC_DCKCFGR_CK48MSEL;   // Connect 48MHz clock to PLLSAI
+    RCC->DCKCFGR    &= ~RCC_DCKCFGR_PLLSAIDIVR; // Set PLLSAIDIVR to /2
+    RCC->DCKCFGR    &= ~RCC_DCKCFGR_SDIOSEL;    // Use 48MHz clock for SD card
+
+    RCC->CR         |= RCC_CR_PLLSAION;         // Enable PLLSAI
+    while((RCC->CR & RCC_CR_PLLSAIRDY) == 0) ;  // Wait until ready
+
     // Configure SysTick
     SysTick->LOAD = SystemCoreClock / miosix::TICK_FREQ;
 }
