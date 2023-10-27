@@ -284,6 +284,8 @@ static void *decodeFunc(void *arg)
         return NULL;
     }
 
+    float agcPeakAverage = 2000.0f;
+    float agcGain = 1.0f;
     codec2 = codec2_create(CODEC2_MODE_3200);
 
     // Ensure that thread start is correctly synchronized with the output
@@ -325,15 +327,33 @@ static void *decodeFunc(void *arg)
         {
             codec2_decode(codec2, audioBuf, ((uint8_t *) &frame));
 
-            #ifdef PLATFORM_MD3x0
+            // #ifdef PLATFORM_MD3x0
             // Bump up volume a little bit, as on MD3x0 is quite low
-            for(size_t i = 0; i < 160; i++) audioBuf[i] *= 2;
-            #endif
+            // for(size_t i = 0; i < 160; i++) audioBuf[i] *= 2;
+            // #endif
 
+            agcGain = 2000.0f / agcPeakAverage;
+            agcGain *= 6.0f;
+
+            uint16_t maxPeak = 0;
+            for(size_t i = 0; i < 160; i++)
+            {
+                int16_t sample = abs(audioBuf[i]);
+                audioBuf[i] *= agcGain;
+                if(sample > maxPeak)
+                    maxPeak = sample;
+            }
+
+            if(maxPeak > 200)
+            {
+                agcPeakAverage -= agcPeakAverage / 100.0f;
+                agcPeakAverage += ((float) maxPeak) / 100.0f;
+            }
         }
         else
         {
             memset(audioBuf, 0x00, 160 * sizeof(stream_sample_t));
+            agcPeakAverage = 2000.0f;
         }
 
         outputStream_sync(oStream, true);
