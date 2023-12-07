@@ -109,11 +109,13 @@ void platform_terminate()
 uint16_t platform_getVbat()
 {
     /*
-     * Battery voltage is measured through an 1:3 voltage divider and
-     * adc1_getMeasurement returns a value in mV. Thus, to have effective
-     * battery voltage, multiply by three.
+     * The resistor divider for battery voltage measurement has a ratio of
+     * around 1:3.26.
      */
-    return adc1_getMeasurement(ADC_VBAT_CH) * 3;
+    uint32_t vbat = adc1_getMeasurement(ADC_VBAT_CH);
+    vbat = (vbat * 326) / 100;
+
+    return vbat;
 }
 
 uint8_t platform_getMicLevel()
