@@ -22,12 +22,14 @@
 
 #include <interfaces/nvmem.h>
 #include <nvmem_access.h>
+#include <rtxlink_dat.h>
 #include <rtxlink_fmp.h>
 #include <rtxlink.h>
 #include <string.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <errno.h>
+#include <state.h>
 
 static const size_t MAX_REPLY_SIZE = 512;
 
@@ -91,6 +93,37 @@ static size_t cmd_meminfo(const uint8_t *args, const uint8_t nArg, uint8_t *repl
     return replySize;
 }
 
+static size_t cmd_dumpRestore(const uint8_t *args, const uint8_t nArg, uint8_t *reply)
+{
+    (void) nArg;
+
+    const struct nvmArea *areas;
+    size_t numAreas = nvm_getMemoryAreas(&areas);
+
+    // Prepare the response frame
+    size_t replySize = 2;
+    reply[1]         = 0x00;    // Status = OK
+
+    // Verify memory index
+    uint8_t area = args[0];
+    if(area >= numAreas)
+    {
+        reply[1] = EINVAL;
+        return replySize;
+    }
+
+    int ret;
+    if(reply[0] == FMP_FRAME_DUMP)
+        ret = dat_readNvmArea(&areas[area]);
+    else
+        ret = dat_writeNvmArea(&areas[area]);
+
+    if(ret < 0)
+        reply[1] = -ret;
+
+    return replySize;
+}
+
 static void fmpProtocolHandler(const uint8_t *data, size_t len)
 {
     uint8_t reply[MAX_REPLY_SIZE];
@@ -117,6 +150,11 @@ static void fmpProtocolHandler(const uint8_t *data, size_t len)
         return;
     }
 
+    // Setup standard reply, content will be overridden by command handlers
+    reply[0] = cmd;
+    reply[1] = EPERM;
+    rLen     = 2;
+
     // Handle the incoming command
     switch(cmd)
     {
@@ -124,10 +162,16 @@ static void fmpProtocolHandler(const uint8_t *data, size_t len)
             rLen = cmd_meminfo(args, nArgs, reply);
             break;
 
+        case FMP_FRAME_DUMP:
+        case FMP_FRAME_FLASH:
+            // Raw memory dump/flash is available only in data transfer mode
+            if(state.devStatus != DATATRANSFER)
+                break;
+
+            rLen = cmd_dumpRestore(args, nArgs, reply);
+            break;
+
         default:
-            reply[0] = cmd;
-            reply[1] = EPERM;
-            rLen     = 2;
             break;
     }
 
