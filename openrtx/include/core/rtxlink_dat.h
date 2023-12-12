@@ -18,79 +18,49 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef RTXLINK_H
-#define RTXLINK_H
+#ifndef RTXLINK_DAT_H
+#define RTXLINK_DAT_H
 
-#include <interfaces/chardev.h>
 #include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/**
- * Identifiers for each sub-protocol of rtxlink
- */
-enum ProtocolID
+enum DatStatus
 {
-    RTXLINK_FRAME_STDIO = 0x00,
-    RTXLINK_FRAME_CAT   = 0x01,
-    RTXLINK_FRAME_FMP   = 0x02,
-    RTXLINK_FRAME_DAT   = 0x03,
-
-    RTXLINK_NUM_PROTOCOLS
+    RTXLINK_DAT_IDLE,
+    RTXLINK_DAT_READ,
+    RTXLINK_DAT_WRITE
 };
 
 
 /**
- * Initialize the rtxlink management module.
+ * Start an rtxlink data transfer from a nonvolatile memory area to the host
+ * using the DAT protocol. The function returns immediately and data transfer
+ * is done in background until all the content of the area is read.
  *
- * @param rtxlinkDev: pointer to the character device used for rtxlink
- * communication.
+ * @param area: NVM area to be read.
+ * @return zero on success, a negative error code otherwhise.
  */
-void rtxlink_init(const struct chardev *rtxlinkDev);
+int dat_readNvmArea(const struct nvmArea *area);
 
 /**
- * Periodic rtxlink update task.
- */
-void rtxlink_task();
-
-/**
- * Shut down the rtxlink managment module.
- */
-void rtxlink_terminate();
-
-/**
- * Send a block of data over rtxlink.
+ * Start an rtxlink data transfer from the host to a nonvolatile memory area
+ * using the DAT protocol. The function returns immediately and data transfer
+ * is done in background until all the content of the area is written.
  *
- * @param proto: protocol ID.
- * @param data: pointer to payload data;
- * @param len: payload length in bytes.
- * @return true on success, false if a transmission is alredy ongoing.
+ * @param area: NVM area to be written.
+ * @return zero on success, a negative error code otherwhise.
  */
-int rtxlink_send(const enum ProtocolID proto, const void *data, const size_t len);
+int dat_writeNvmArea(const struct nvmArea *area);
 
 /**
- * Register a protocol handler callback.
+ * Get the current status of the DAT endpoint.
  *
- * @param proto: protocol ID.
- * @param handler: callback function;
- * @return true on success, false if a callback is already registered.
+ * @return DAT endpoint status.
  */
-bool rtxlink_setProtocolHandler(const enum ProtocolID proto,
-                                void (*handler)(const uint8_t *, size_t));
+enum DatStatus dat_getStatus();
 
 /**
- * Remove an registered protocol handler callback.
- *
- * @param proto: protocol ID.
+ * Reset the DAT endpoint interrupting any transfer eventually ongoing.
  */
-void rtxlink_removeProtocolHandler(const enum ProtocolID proto);
-
-#ifdef __cplusplus
-}
-#endif
+void dat_reset();
 
 #endif
