@@ -101,8 +101,9 @@ static size_t cmd_dumpRestore(const uint8_t *args, const uint8_t nArg, uint8_t *
     size_t numAreas = nvm_getMemoryAreas(&areas);
 
     // Prepare the response frame
-    size_t replySize = 2;
+    size_t replySize = 3;
     reply[1]         = 0x00;    // Status = OK
+    reply[2]         = 0x00;    // Empty response, no parameters
 
     // Verify memory index
     uint8_t area = args[0];
