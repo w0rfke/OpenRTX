@@ -24,6 +24,8 @@
 #include <rtxlink.h>
 #include <errno.h>
 
+#define DAT_PAYLOAD_SIZE 1024
+
 #define ACK   (0x06)  // ACKnowledge, receive OK
 #define NAK   (0x15)  // Negative ACKnowledge, receiver ERROR, retry
 
@@ -34,7 +36,7 @@ static size_t                curAddr;
 
 static void datProtocolHandler(const uint8_t *data, size_t len)
 {
-    uint8_t outData[1026];
+    uint8_t outData[DAT_PAYLOAD_SIZE + 2];
     size_t  outSize;
 
     switch(status)
@@ -42,8 +44,8 @@ static void datProtocolHandler(const uint8_t *data, size_t len)
         case RTXLINK_DAT_READ:
         {
             size_t toRead = memArea->size - (curAddr - memArea->startAddr);
-            if(toRead > 1024)
-                toRead = 1024;
+            if(toRead > DAT_PAYLOAD_SIZE)
+                toRead = DAT_PAYLOAD_SIZE;
 
             nvmArea_read(memArea, curAddr, &outData[2], toRead);
             outData[0] = blockCnt;
