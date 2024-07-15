@@ -95,6 +95,11 @@ void radio_enableAfOutput();
 void radio_disableAfOutput();
 
 /**
+ * Get VOX status
+ */
+void radio_VOX();
+
+/**
  * Enable the RX stage.
  */
 void radio_enableRx();
