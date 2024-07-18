@@ -218,6 +218,9 @@ const char *authors[] =
     "Silvano IU2KWO",
     "Federico IU2NUO",
     "Fred IU2NRO",
+    "Joseph VK7JS",
+    "Morgan ON4MOD",
+    "Marco DM4RCO"
 };
 
 static const char *symbols_ITU_T_E161[] =
@@ -1374,6 +1377,13 @@ void ui_updateFSM(bool *sync_rtx)
     }
 #endif // PLATFORM_TTWRPLUS
 
+    // Unlatch and exit from macro menu on PTT press
+    if(macro_latched && txOngoing)
+    {
+        macro_latched = false;
+        macro_menu = false;
+    }
+
     long long now = getTick();
     // Process pressed keys
     if(event.type == EVENT_KBD)
@@ -1976,9 +1986,16 @@ void ui_updateFSM(bool *sync_rtx)
                 else if(msg.keys & KEY_ESC)
                     _ui_menuBack(MENU_TOP);
                 break;
-            // About screen
+            // About screen, scroll without rollover
             case MENU_ABOUT:
-                if(msg.keys & KEY_ESC)
+                if(msg.keys & KEY_UP || msg.keys & KNOB_LEFT)
+                {
+                    if(ui_state.menu_selected > 0)
+                        ui_state.menu_selected -= 1;
+                }
+                else if(msg.keys & KEY_DOWN || msg.keys & KNOB_RIGHT)
+                    ui_state.menu_selected += 1;
+                else if(msg.keys & KEY_ESC)
                     _ui_menuBack(MENU_TOP);
                 break;
 #ifdef CONFIG_RTC
@@ -2451,8 +2468,6 @@ void ui_updateFSM(bool *sync_rtx)
 
         if (txOngoing || rtx_rxSquelchOpen())
         {
-            if (txOngoing)
-                macro_latched = 0;
             _ui_exitStandby(now);
             return;
         }
@@ -2533,7 +2548,7 @@ bool ui_updateGUI()
             break;
         // About menu screen
         case MENU_ABOUT:
-            _ui_drawMenuAbout();
+            _ui_drawMenuAbout(&ui_state);
             break;
 #ifdef CONFIG_RTC
         // Time&Date settings screen
