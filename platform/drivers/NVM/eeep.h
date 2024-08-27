@@ -1,8 +1,9 @@
 /***************************************************************************
- *   Copyright (C) 2023 by Federico Amedeo Izzo IU2NUO,                    *
+ *   Copyright (C) 2024 by Federico Amedeo Izzo IU2NUO,                    *
  *                         Niccolò Izzo IU2KIN                             *
  *                         Frederik Saraci IU2NRO                          *
  *                         Silvano Seva IU2KWO                             *
+ *                         Morgan Diepart ON4MOD                           *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -18,69 +19,67 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef POSIX_FILE_H
-#define POSIX_FILE_H
+#ifndef EEEP_H
+#define EEEP_H
 
 #include <interfaces/nvmem.h>
 
 /**
- * Device driver for file-based nonvolatile memory storage. The driver
- * implementation is based on the POSIX syscalls for file management.
+ * Driver for Emulated EEPROM, providing a means to store recurrent data without
+ * stressing too much the same sector of a NOR or NAND flash memory.
  */
-
 
 /**
- * Driver configuration data structure.
+ * Device driver and information block for EEEPROM memory.
  */
-struct nvmFileDevice
+extern const struct nvmOps  eeep_ops;
+extern const struct nvmInfo eeep_info;
+
+/**
+ * Driver private data.
+ */
+struct eeepData
 {
-    const void           *priv;    ///< Device driver private data
-    const struct nvmOps  *ops;     ///< Device operations
-    const struct nvmInfo *info;    ///< Device info
-    const size_t          size;    ///< Device size
-    int                     fd;    ///< File descriptor
+    const struct nvmDevice    *nvm;         ///< Underlying NVM device
+    const struct nvmPartition *part;        ///< Memory partition used for EEPROM emulation
+    uint32_t                  readAddr;     ///< Physical start address for EEEPROM reads
+    uint32_t                  writeAddr;    ///< Physical start address for EEEPROM writes
 };
 
 /**
- * Driver API functions and info.
- */
-extern const struct nvmOps  posix_file_ops;
-extern const struct nvmInfo posix_file_info;
-
-/**
- * Instantiate a POSIX file storage NVM device.
+ * Instantiate a EEEPROM NVM device.
  *
  * @param name: device name.
  * @param path: full path of the file used for data storage.
- * @param dim: size of the storage file, in bytes.
+ * @param size: size of the storage file, in bytes.
  */
-#define POSIX_FILE_DEVICE_DEFINE(name, dim) \
-static struct nvmFileDevice name =          \
-{                                           \
-    .ops  = &posix_file_ops,                \
-    .info = &posix_file_info,               \
-    .size = dim,                            \
-    .fd   = -1                              \
+#define EEEP_DEVICE_DEFINE(name)        \
+static struct eeepData eeepData_##name; \
+struct nvmDevice name =                 \
+{                                       \
+    .priv = &eeepData_##name,           \
+    .ops  = &eeep_ops,                  \
+    .info = &eeep_info,                 \
+    .size = 65536                       \
 };
 
 /**
- * Initialize a POSIX file driver instance.
- * This function allows also to override the path of the file used for data
- * storage, where necessary.
+ * Initialize an EEEP driver instance.
  *
  * @param dev: pointer to device descriptor.
- * @param fileName: full path of the file used for data storage.
+ * @param nvm: index of the underlying NVM device used for data storage.
+ * @param part: NVM partition used for data storage.
  * @return zero on success, a negative error code otherwise.
  */
-int posixFile_init(struct nvmFileDevice *dev, const char *fileName);
+int eeep_init(const struct nvmDevice *dev, const uint32_t nvm,
+              const uint32_t part);
 
 /**
- * Shut down a POSIX file driver instance.
+ * Shut down an EEEP driver instance.
  *
  * @param dev: pointer to device descriptor.
- * @param maxSize: maximum size for the storage file, in bytes.
  * @return zero on success, a negative error code otherwise.
  */
-int posixFile_terminate(struct nvmFileDevice *dev);
+int eeep_terminate(const struct nvmDevice *dev);
 
-#endif /* POSIX_FILE_H */
+#endif /* EEEP_H */
