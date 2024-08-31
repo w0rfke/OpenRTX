@@ -81,7 +81,7 @@ void state_init()
     state.step_index    = 4; // Default frequency step 12.5kHz
 
     // Force brightness field to be in range 0 - 100
-    if(state.settings.brightness > 100)
+    if(state.settings.brightness > 100 || state.settings.brightness == 0)
     {
         state.settings.brightness = 100;
     }
@@ -92,7 +92,7 @@ void state_terminate()
     // Never store a brightness of 0 to avoid booting with a black screen
     if(state.settings.brightness == 0)
     {
-        state.settings.brightness = 5;
+        state.settings.brightness = 100;
     }
 
     nvm_writeSettingsAndVfo(&state.settings, &state.channel);
@@ -142,4 +142,5 @@ void state_resetSettingsAndVfo()
 {
     state.settings = default_settings;
     state.channel  = cps_getDefaultChannel();
+    nvm_writeSettingsAndVfo(&state.settings, &state.channel);
 }
