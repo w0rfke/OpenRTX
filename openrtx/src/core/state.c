@@ -79,6 +79,8 @@ void state_init()
     state.emergency     = false;
     state.txDisable     = false;
     state.step_index    = 4; // Default frequency step 12.5kHz
+    state.spectrum_startFreq = 14655000; // Default start frequency for spectrum display
+    state.spectrum_currentPart = 0;
 
     // Force brightness field to be in range 0 - 100
     if(state.settings.brightness > 100 || state.settings.brightness == 0)
@@ -101,8 +103,10 @@ void state_terminate()
 
 void state_task()
 {
-    // Update radio state once every 100ms
-    if((getTick() - lastUpdate) < 100)
+    // Update radio state once every 100ms (or faster for spectrum)
+    if(state.rtxStatus != RTX_SPECTRUM && (getTick() - lastUpdate) < 100)
+        return;
+    if((getTick() - lastUpdate) < 25)
         return;
 
     lastUpdate = getTick();
@@ -127,7 +131,11 @@ void state_task()
     #endif
 
     state.charge = battery_getCharge(state.v_bat);
-    state.rssi = rtx_getRssi();
+    // There is a bug where during spectrum operation, the RSSI reads collide.
+    // This is a workaround to prevent the RSSI from being updated during spectrum operation.
+    if(state.rtxStatus != RTX_SPECTRUM)
+        state.rssi = rtx_getRssi();
+    else state.rssi = -127.0;
 
     #ifdef CONFIG_RTC
     state.time = platform_getCurrentTime();
