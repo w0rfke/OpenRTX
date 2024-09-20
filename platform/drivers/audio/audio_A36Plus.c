@@ -64,8 +64,8 @@ void audio_disconnect(const enum AudioSource source, const enum AudioSink sink)
      * when an audio path is released between SOURCE_RTX and SINK_SPK, mute
      * speaker power amplifier to squelch noise.
      */
-    if (source == SOURCE_RTX && sink == SINK_SPK)
-        gpio_clearPin(MIC_SPK_EN);  // open microphone
+    // if (source == SOURCE_RTX && sink == SINK_SPK)
+    //     gpio_clearPin(MIC_SPK_EN);  // open microphone
 }
 
 bool audio_checkPathCompatibility(const enum AudioSource p1Source,

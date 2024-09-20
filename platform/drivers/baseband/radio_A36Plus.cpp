@@ -129,12 +129,12 @@ bool radio_checkRxDigitalSquelch()
 
 void radio_enableAfOutput()
 {
-    gpio_setPin(MIC_SPK_EN);   
+    //gpio_setPin(MIC_SPK_EN);   
 }
 
 void radio_disableAfOutput()
 {
-    gpio_clearPin(MIC_SPK_EN);
+    //gpio_clearPin(MIC_SPK_EN);
 }
 
 void radio_checkVOX(){

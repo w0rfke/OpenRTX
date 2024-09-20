@@ -206,7 +206,7 @@ static void spi_write_half_word(uint16_t data);
 static uint16_t spi_read_half_word(void);
 
 uint16_t ReadRegister(unsigned char reg);
-static void WriteRegister(bk4819_reg_t reg, uint16_t data);
+void WriteRegister(bk4819_reg_t reg, uint16_t data);
 
 /**
  * @brief Get interrupt
