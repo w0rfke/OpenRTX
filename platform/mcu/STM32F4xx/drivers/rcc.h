@@ -1,8 +1,8 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2023 by Federico Amedeo Izzo IU2NUO,             *
- *                                Niccolò Izzo IU2KIN                      *
- *                                Frederik Saraci IU2NRO                   *
- *                                Silvano Seva IU2KWO                      *
+ *   Copyright (C) 2024 by Federico Amedeo Izzo IU2NUO,                    *
+ *                         Niccolò Izzo IU2KIN                             *
+ *                         Frederik Saraci IU2NRO                          *
+ *                         Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -18,35 +18,37 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef HWCONFIG_H
-#define HWCONFIG_H
+#ifndef RCC_H
+#define RCC_H
 
-#include <MK22F51212.h>
-#include "pinmap.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Screen dimensions */
-#define CONFIG_SCREEN_WIDTH 128
-#define CONFIG_SCREEN_HEIGHT 64
+/**
+ * Enumeration type for STM32 internal busses.
+ */
+enum PeriphBus
+{
+    PERIPH_BUS_AHB  = 0,
+    PERIPH_BUS_APB1 = 1,
+    PERIPH_BUS_APB2 = 2,
 
-/* Screen pixel format */
-#define CONFIG_PIX_FMT_BW
+    PERIPH_BUS_NUM
+};
 
-/* Screen has adjustable contrast */
-#define CONFIG_SCREEN_CONTRAST
-#define CONFIG_DEFAULT_CONTRAST 71
-
-/* Screen has adjustable brightness */
-#define CONFIG_SCREEN_BRIGHTNESS
-
-/* Battery type */
-#define CONFIG_BAT_LIPO_2S
+/**
+ * Get the clock frequency of a given peripheral bus.
+ *
+ * @param bus: bus identifier.
+ * @return bus clock frequency in Hz or zero in case of errors.
+ */
+uint32_t rcc_getBusClock(const uint8_t bus);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* HWCONFIG_H */
+#endif /* RCC_H */

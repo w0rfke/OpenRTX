@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2021 - 2023 by Federico Amedeo Izzo IU2NUO,             *
+ *   Copyright (C) 2020 - 2024 by Federico Amedeo Izzo IU2NUO,             *
  *                                Niccolò Izzo IU2KIN                      *
  *                                Frederik Saraci IU2NRO                   *
  *                                Silvano Seva IU2KWO                      *
@@ -18,57 +18,42 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include "SPI2.h"
-#include <pthread.h>
-#include <stm32f4xx.h>
+#ifndef HWCONFIG_H
+#define HWCONFIG_H
 
-pthread_mutex_t mutex;
+#include <MK22F51212.h>
 
-void spi2_init()
-{
-    RCC->APB1ENR |= RCC_APB1ENR_SPI2EN;
-    __DSB();
+#ifdef PLATFORM_GD77
+#include "pinmap_GD77.h"
+#else
+#include "pinmap_DM1801.h"
+#endif
 
-    SPI2->CR1 = SPI_CR1_SSM     /* Software managment of nCS */
-              | SPI_CR1_SSI     /* Force internal nCS        */
-              | SPI_CR1_BR_2    /* Fclock: 42MHz/32 = 1.3MHz */
-              | SPI_CR1_MSTR    /* Master mode               */
-              | SPI_CR1_SPE;    /* Enable peripheral         */
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-    pthread_mutex_init(&mutex, NULL);
+extern const struct spiCustomDevice nvm_spi;
+
+/* Screen dimensions */
+#define CONFIG_SCREEN_WIDTH 128
+#define CONFIG_SCREEN_HEIGHT 64
+
+/* Screen pixel format */
+#define CONFIG_PIX_FMT_BW
+
+/* Screen has adjustable contrast */
+#define CONFIG_SCREEN_CONTRAST
+#define CONFIG_DEFAULT_CONTRAST 71
+
+/* Screen has adjustable brightness */
+#define CONFIG_SCREEN_BRIGHTNESS
+
+/* Battery type */
+#define CONFIG_BAT_LIPO_2S
+
+#ifdef __cplusplus
 }
+#endif
 
-void spi2_terminate()
-{
-    RCC->APB1ENR &= ~RCC_APB1ENR_SPI2EN;
-    __DSB();
-
-    pthread_mutex_destroy(&mutex);
-}
-
-uint8_t spi2_sendRecv(const uint8_t val)
-{
-    SPI2->DR = val;
-    while((SPI2->SR & SPI_SR_RXNE) == 0) ;
-    return SPI2->DR;
-}
-
-bool spi2_lockDevice()
-{
-    if(pthread_mutex_trylock(&mutex) == 0)
-    {
-        return true;
-    }
-
-    return false;
-}
-
-void spi2_lockDeviceBlocking()
-{
-    pthread_mutex_lock(&mutex);
-}
-
-void spi2_releaseDevice()
-{
-    pthread_mutex_unlock(&mutex);
-}
+#endif /* HWCONFIG_H */

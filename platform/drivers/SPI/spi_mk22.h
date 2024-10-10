@@ -18,27 +18,30 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef SPI_STM32_H
-#define SPI_STM32_H
+#ifndef SPI_MK22_H
+#define SPI_MK22_H
 
 #include <peripherals/spi.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
- *  Instantiate an STM32 I2C master device.
+ *  Instantiate an MK22 SPI master device.
  *
  * @param name: device name.
  * @param peripheral: underlying MCU peripheral.
  * @param mutx: pointer to mutex, or NULL.
  */
-#define SPI_STM32_DEVICE_DEFINE(name, peripheral, mutx)                      \
-extern int spiStm32_transfer(const struct spiDevice *dev, const void *txBuf, \
-                             const size_t txSize, void *rxBuf,               \
-                             const size_t rxSize);                           \
-const struct spiDevice name =                                                \
-{                                                                            \
-    .transfer = &spiStm32_transfer,                                          \
-    .priv     = peripheral,                                                  \
-    .mutex    = mutx                                                         \
+#define SPI_MK22_DEVICE_DEFINE(name, peripheral, mutx)                      \
+extern int spiMk22_transfer(const struct spiDevice *dev, const void *txBuf, \
+                            void *rxBuf, const size_t size);                \
+const struct spiDevice name =                                               \
+{                                                                           \
+    .transfer = &spiMk22_transfer,                                          \
+    .priv     = peripheral,                                                 \
+    .mutex    = mutx                                                        \
 };
 
 /**
@@ -47,17 +50,24 @@ const struct spiDevice name =                                                \
  * mapping of the corresponding gpio lines.
  *
  * @param dev: SPI device descriptor.
- * @param speed: SPI clock speed.
+ * @param pbr: value for the baud rate prescaler (see reference manual).
+ * @param br: value for the baud rate scaler (see reference manual).
  * @param flags: SPI configuration flags.
  * @return zero on success, a negative error code otherwise.
  */
-int spi_init(const struct spiDevice *dev, const uint32_t speed, const uint8_t flags);
+int spiMk22_init(const struct spiDevice *dev, const uint8_t pbr, const uint8_t br,
+                 const uint8_t flags);
 
 /**
  * Shut down an SPI peripheral and driver.
  *
  * @param dev: SPI device descriptor.
  */
-void spi_terminate(const struct spiDevice *dev);
+void spiMk22_terminate(const struct spiDevice *dev);
 
-#endif /* SPI_STM32_H */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SPI_MK22_H */

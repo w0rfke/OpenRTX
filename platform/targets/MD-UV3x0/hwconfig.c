@@ -1,8 +1,8 @@
 /***************************************************************************
- *   Copyright (C) 2020 - 2024 by Federico Amedeo Izzo IU2NUO,             *
- *                                Niccolò Izzo IU2KIN                      *
- *                                Frederik Saraci IU2NRO                   *
- *                                Silvano Seva IU2KWO                      *
+ *   Copyright (C) 2024 by Federico Amedeo Izzo IU2NUO,                    *
+ *                         Niccolò Izzo IU2KIN,                            *
+ *                         Frederik Saraci IU2NRO,                         *
+ *                         Silvano Seva IU2KWO                             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -18,31 +18,7 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#ifndef THREADS_H
-#define THREADS_H
+#include <hwconfig.h>
+#include <spi_stm32.h>
 
-#include <stddef.h>
-
-/**
- * Threads' stack sizes
- */
-#define UI_THREAD_STKSIZE     2048
-#define RTX_THREAD_STKSIZE    512
-#define CODEC2_THREAD_STKSIZE 16384
-
-/**
- * Thread priority levels, UNIX-like: lower level, higher thread priority
- */
-#ifdef _MIOSIX
-#define THREAD_PRIO_RT      0
-#define THREAD_PRIO_HIGH    1
-#define THREAD_PRIO_NORMAL  2
-#define THREAD_PRIO_LOW     3
-#endif
-
-/**
- * Spawn all the threads for the various functionalities.
- */
-void create_threads();
-
-#endif /* THREADS_H */
+SPI_STM32_DEVICE_DEFINE(nvm_spi, SPI1, NULL)
