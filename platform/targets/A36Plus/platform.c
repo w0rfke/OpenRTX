@@ -198,10 +198,10 @@ void timer_config(void)
     // Timer configuration
     timer_parameter_struct timer_initpara;
     timer_deinit(TIMER1);
-    timer_initpara.prescaler = 23400; // Prescaler value
+    timer_initpara.prescaler = 95; // Prescaler value
     timer_initpara.alignedmode = TIMER_COUNTER_EDGE;
     timer_initpara.counterdirection = TIMER_COUNTER_UP;
-    timer_initpara.period = 2; // Auto-reload value
+    timer_initpara.period = 832; // Auto-reload value
     timer_initpara.clockdivision = TIMER_CKDIV_DIV1;
     timer_init(TIMER1, &timer_initpara);
 
@@ -231,12 +231,12 @@ void TIMER1_IRQHandler(void)
             if (c & (1 << idx%8))
             {
                 // Write 1200Hz tone
-                WriteRegister(0x71, ((1200*1048576u) + 50000u) /100000u);
+                WriteRegister(0x71, ((1200*1032444u)) /100000u);
             }
             else
             {
                 // Write 2200Hz tone
-                WriteRegister(0x71, ((2200*1048576u) + 50000u) /100000u);
+                WriteRegister(0x71, ((2200*1032444u) ) /100000u);
             }
             idx++;
         }
@@ -258,7 +258,7 @@ void platform_beepStart(uint16_t freq)
     // rtx_terminate();
     // Turn on the speaker
     BK4819_BeepStart(freq, false);
-    delayMs(100);
+    delayMs(1000);
     gpio_setPin(MIC_SPK_EN);
     //gpio_clearPin(MIC_SPK_EN);
     // Start the timer
