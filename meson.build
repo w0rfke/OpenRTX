@@ -195,12 +195,10 @@ gdx_inc = ['platform/targets/GDx']
 ##
 
 ##
-## STM32F405
+## STM32F4xx common files
 ##
 
-stm32f405_src = ['platform/mcu/STM32F4xx/boot/startup.cpp',
-                 'platform/mcu/STM32F4xx/boot/bsp.cpp',
-                 'platform/mcu/STM32F4xx/boot/libc_integration.cpp',
+stm32f4xx_src = ['platform/mcu/STM32F4xx/boot/libc_integration.cpp',
                  'platform/mcu/STM32F4xx/drivers/usb/usb_bsp.c',
                  'platform/mcu/STM32F4xx/drivers/usb/usb_core.c',
                  'platform/mcu/STM32F4xx/drivers/usb/usb_dcd.c',
@@ -228,13 +226,38 @@ stm32f405_src = ['platform/mcu/STM32F4xx/boot/startup.cpp',
                  'platform/drivers/keyboard/cap1206.c',
                  'platform/mcu/CMSIS/Device/ST/STM32F4xx/Source/system_stm32f4xx.c']
 
-stm32f405_inc = ['platform/mcu/CMSIS/Include',
+stm32f4xx_inc = ['platform/mcu/CMSIS/Include',
                  'platform/mcu/CMSIS/Device/ST/STM32F4xx/Include',
                  'platform/mcu/STM32F4xx',
                  'platform/mcu/STM32F4xx/drivers',
                  'platform/mcu/STM32F4xx/drivers/usb']
 
-stm32f405_def = {'STM32F405xx': '', 'HSE_VALUE':'8000000'}
+##
+## STM32F401
+##
+
+stm32f401_src = stm32f4xx_src + ['platform/mcu/STM32F4xx/boot/startup_f401.cpp',
+                                 'platform/mcu/STM32F4xx/boot/bsp_f401.cpp']
+stm32f401_inc = stm32f4xx_inc
+stm32f401_def = {'STM32F401xx': '', 'HSE_VALUE':'8000000', 'SYSCLK_FREQ_84MHz':''}
+
+##
+## STM32F405
+##
+
+stm32f405_src = stm32f4xx_src + ['platform/mcu/STM32F4xx/boot/startup_f405.cpp',
+                                 'platform/mcu/STM32F4xx/boot/bsp_f405.cpp']
+stm32f405_inc = stm32f4xx_inc
+stm32f405_def = {'STM32F405xx': '', 'HSE_VALUE':'8000000', 'SYSCLK_FREQ_168MHz':''}
+
+##
+## STM32F469
+##
+
+stm32f469_src = stm32f4xx_src + ['platform/mcu/STM32F4xx/boot/startup_f469.cpp',
+                                 'platform/mcu/STM32F4xx/boot/bsp_f469.cpp']
+stm32f469_inc = stm32f4xx_inc
+stm32f469_def = {'STM32F469xx': '', 'HSE_VALUE':'8000000', 'SYSCLK_FREQ_180MHz':''}
 
 ##
 ## MK22FN512
@@ -388,6 +411,7 @@ md3x0_src = ['platform/drivers/NVM/nvmem_MD3x0.c',
              'platform/drivers/baseband/SKY72310.c',
              'platform/drivers/baseband/radio_MD3x0.cpp',
              'platform/drivers/baseband/HR_C5000_MDx.cpp',
+             'platform/drivers/baseband/HR_C5000_MDx.cpp',
              'platform/drivers/keyboard/keyboard_MD3x.c',
              'platform/drivers/display/HX8353_MD3x.cpp',
              'platform/drivers/backlight/backlight_MDx.c',
@@ -533,6 +557,36 @@ a36plus_src += openrtx_src + gd32f330_src + miosix_cm4f_src + ui_src_default
 a36plus_inc += openrtx_inc + gd32f330_inc + miosix_cm4f_inc
 a36plus_def += openrtx_def + gd32f330_def + miosix_cm4f_def
 
+
+##
+## Talkpod A36Plus Running in Simulation on STM32F401xE
+##
+
+a36plusf401_src = ['platform/drivers/baseband/bk4819.c',
+                   'platform/targets/A36Plusf401/platform.c',
+                   'platform/drivers/display/ST7735S_a36plusf401.c',
+                   'platform/drivers/keyboard/keyboard_a36plus.c',
+                   'platform/drivers/audio/audio_A36Plus.c',
+                   'platform/drivers/CPS/cps_io_native_A36plus.c',
+                   'platform/drivers/NVM/W25Qx.c',
+                   'platform/drivers/NVM/nvmem_A36Plus.c',
+                   #'platform/drivers/NVM/spiFlash_A36plus.c',
+                   #'platform/drivers/ADC/ADC0_A36plus.c',
+                   'platform/drivers/baseband/bk1080.c',
+                   #'openrtx/src/rtx/OpMode_WFM.cpp',
+                   #'platform/drivers/backlight/backlight_A36Plus.c',
+                   'platform/drivers/baseband/radio_A36Plus.cpp']
+
+a36plusf401_inc = ['platform/drivers/baseband',
+                   'platform/targets/A36Plusf401']
+
+a36plusf401_def = {'PLATFORM_A36PLUS': '', 'STM32F401xE': ''}
+
+a36plusf401_src += openrtx_src + stm32f401_src + miosix_cm4f_src + ui_src_default
+a36plusf401_inc += openrtx_inc + stm32f401_inc + miosix_cm4f_inc
+a36plusf401_def += openrtx_def + stm32f401_def + miosix_cm4f_def
+
+
 ##
 ## -------------------------- Compilation arguments ----------------------------
 ##
@@ -646,6 +700,15 @@ foreach k, v : a36plus_def
   endif
 endforeach
 
+a36plusf401_args = []
+foreach k, v : a36plusf401_def
+    if v == ''
+        a36plusf401_args += '-D@0@'.format(k)
+    else
+        a36plusf401_args += '-D@0@=@1@'.format(k, v)
+    endif
+endforeach
+
 linux_opts = {
   'sources'            : linux_default_src,
   'include_directories': linux_inc,
@@ -679,7 +742,7 @@ md3x0_opts = {
   'dependencies'       : [codec2_dep],
   'c_args'             : md3x0_args,
   'cpp_args'           : md3x0_args,
-  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_MDx.ld',
+  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_stm32f405_MDx.ld',
                           '-Wl,--print-memory-usage']
 }
 
@@ -689,7 +752,7 @@ mduv3x0_opts = {
   'dependencies'       : [codec2_dep],
   'c_args'             : mduv3x0_args,
   'cpp_args'           : mduv3x0_args,
-  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_MDx.ld',
+  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_stm32f405_MDx.ld',
                           '-Wl,--print-memory-usage']
 }
 
@@ -719,7 +782,7 @@ md9600_opts = {
   'dependencies'       : [codec2_dep],
   'c_args'             : md9600_args,
   'cpp_args'           : md9600_args,
-  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_MDx.ld',
+  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_stm32f405_MDx.ld',
                           '-Wl,--print-memory-usage'],
 }
 
@@ -729,7 +792,7 @@ mod17_opts = {
   'dependencies'       : [codec2_dep],
   'c_args'             : mod17_args,
   'cpp_args'           : mod17_args,
-  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_Mod17.ld',
+  'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_stm32f405_Mod17.ld',
                           '-Wl,--print-memory-usage'],
 }
 
@@ -751,6 +814,16 @@ a36plus_opts = {
   'cpp_args'           : a36plus_args,
   'link_args'          : ['-Wl,-T../platform/mcu/GD32F330/linker_script.ld',
                           '-Wl,--print-memory-usage'],
+}
+
+a36plusf401_opts = {
+    'sources'            : a36plusf401_src,
+    'include_directories': a36plusf401_inc,
+    'dependencies'       : [codec2_dep],
+    'c_args'             : a36plusf401_args,
+    'cpp_args'           : a36plusf401_args,
+    'link_args'          : ['-Wl,-T../platform/mcu/STM32F4xx/linker_script_stm32f401.ld',
+                            '-Wl,--print-memory-usage'],
 }
 
 ttwrplus_opts = {
@@ -834,6 +907,13 @@ targets = [
   {
     'name'     : 'a36plus',
     'opts'     : a36plus_opts,
+    'flashable': true,
+    'wrap'     : ' ',
+    'load_addr': ' '
+  },
+  {
+    'name'     : 'a36plusf401',
+    'opts'     : a36plusf401_opts,
     'flashable': true,
     'wrap'     : ' ',
     'load_addr': ' '
@@ -973,24 +1053,45 @@ foreach t : targets
                                  '-D', '@INPUT@',
                                  '-s', '0x08000000'])
 
-      # A36Plus handling
-      elif name == 'openrtx_a36plus'
-        
-          # Wrap target for A36Plus for consistency, same output as bin target
-          # Wrapping is done by "rtxflash wrap A36Plus [input] [output.kdhx]
-          wrap = custom_target(name+'_wrap',
-                        output  : name+'_wrap.kdhx',
-                        input   : bin,
-                        command : [rtxflash, 'wrap', 'A36Plus', '@INPUT@', '@OUTPUT@'])
-  
-          # Flash target for A36Plus
-          # rtxflash flash A36Plus [serialport] [input.kdhx]
-          # FIXME: The serial port should be a parameter!
-          custom_target(name+'_flash',
-                        input   : wrap,
-                        output  : name+'_flash',
-                        command : [rtxflash, 'flash', 'A36Plus', '/dev/ttyUSB0', '@INPUT@'])  
-      else
+                # A36Plus handling
+            elif name == 'openrtx_a36plus'
+
+                # Wrap target for A36Plus for consistency, same output as bin target
+                # Wrapping is done by "rtxflash wrap A36Plus [input] [output.kdhx]
+                wrap = custom_target(name+'_wrap',
+                                     output  : name+'_wrap.kdhx',
+                                     input   : bin,
+                                     command : [rtxflash, 'wrap', 'A36Plus', '@INPUT@', '@OUTPUT@'])
+
+                # Flash target for A36Plus
+                # rtxflash flash A36Plus [serialport] [input.kdhx]
+                # FIXME: The serial port should be a parameter!
+                custom_target(name+'_flash',
+                              input   : wrap,
+                              output  : name+'_flash',
+                              command : [rtxflash, 'flash', 'A36Plus', '/dev/ttyUSB0', '@INPUT@'])
+
+                # A36Plus STMf401 Sim
+            elif name == 'openrtx_a36plusf401'
+
+                # Wrap target for A36Plus STMf401 Sim for consistency, same output as bin target
+             #   custom_target(name+'_wrap',
+             #                 output  : name+'_bin',
+             #                 input   : exe,
+             #                 command : [objcopy, '-O', 'binary', '@INPUT@', '@OUTPUT@'])
+
+
+
+            #custom_target(name+'_flash',
+            #              input   : bin,
+            #              output  : name+'_flash',
+            #              command : [dfu_util,
+            #                         '-d', '0483:df11',
+            #                         '-a', '0',
+            #                         '-D', '@INPUT@',
+            #                         '-s', '0x08000000'])
+
+    else
 
         wrap = custom_target(name+'_wrap',
                              output  : name+'_wrap',

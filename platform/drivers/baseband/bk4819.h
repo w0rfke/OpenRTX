@@ -1,8 +1,10 @@
 #ifndef __BK4818_JAMIEXU_H__
 #define __BK4818_JAMIEXU_H__
+#define BIT(x)                       ((uint32_t)((uint32_t)0x01U<<(x)))
 
 
-#include "gpio.h"
+//#include "gpio.h"
+#include "pinmap.h" //Tris - Needed as gpio.h is removed
 #include "peripherals/gpio.h"
 #include <calibInfo_A36Plus.h>
 // Written by Jamiexu
