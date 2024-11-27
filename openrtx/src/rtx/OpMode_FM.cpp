@@ -18,11 +18,18 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/platform.h>
-#include <interfaces/delays.h>
-#include <interfaces/radio.h>
+#include "platform.h"
+#include "delays.h"
+#include "radio.h"
 #include <OpMode_FM.hpp>
 #include <rtx.h>
+#include "openrtxfunctions.h"
+
+void sleepFor(unsigned int seconds, unsigned int mseconds)
+{
+    unsigned int time = (seconds * 1000) + mseconds;
+    delayMs(time);
+}
 
 #if defined(PLATFORM_MDUV3x0)
 #include "../../../drivers/baseband/HR_C6000.h"
@@ -81,9 +88,9 @@ void OpMode_FM::disable()
     // Clean shutdown.
     platform_ledOff(GREEN);
     platform_ledOff(RED);
-    audioPath_release(rxAudioPath);
-    audioPath_release(txAudioPath);
-    radio_disableRtx();
+    //audioPath_release(rxAudioPath);
+    //audioPath_release(txAudioPath);
+    //radio_disableRtx();
     rfSqlOpen = false;
     sqlOpen   = false;
     enterRx   = false;
@@ -113,26 +120,27 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
 
         // Local flags for current RF and tone squelch status
         bool rfSql   = ((status->rxToneEn == 0) && (rfSqlOpen == true));
-        bool toneSql = ((status->rxToneEn == 1) && radio_checkRxDigitalSquelch());
+        //bool toneSql = ((status->rxToneEn == 1) && radio_checkRxDigitalSquelch());
+			  bool toneSql = ((status->rxToneEn == 1) && false);
 
         // Audio control
         if((sqlOpen == false) && (rfSql || toneSql))
         {
-            rxAudioPath = audioPath_request(SOURCE_RTX, SINK_SPK, PRIO_RX);
+            //rxAudioPath = audioPath_request(SOURCE_RTX, SINK_SPK, PRIO_RX);
             if(rxAudioPath > 0) sqlOpen = true;
         }
 
         if((sqlOpen == true) && (rfSql == false) && (toneSql == false))
         {
-            audioPath_release(rxAudioPath);
+            //audioPath_release(rxAudioPath);
             sqlOpen = false;
         }
     }
     else if((status->opStatus == OFF) && enterRx)
     {
-        radio_disableRtx();
+        //radio_disableRtx();
 
-        radio_enableRx();
+        //radio_enableRx();
         status->opStatus = RX;
         enterRx = false;
     }
@@ -141,32 +149,33 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
     if(platform_getPttStatus() && (status->opStatus != TX) &&
                                   (status->txDisable == 0))
     {
-        audioPath_release(rxAudioPath);
-        radio_disableRtx();
+        //audioPath_release(rxAudioPath);
+        //radio_disableRtx();
 
-        txAudioPath = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
-        radio_enableTx();
+        //txAudioPath = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
+        //radio_enableTx();
 
         status->opStatus = TX;
     }
 
     if(!platform_getPttStatus() && (status->opStatus == TX))
     {
-        audioPath_release(txAudioPath);
-        radio_disableRtx();
+        //audioPath_release(txAudioPath);
+        //radio_disableRtx();
 
         status->opStatus = OFF;
         enterRx = true;
         sqlOpen = false;  // Force squelch to be redetected.
     }
     if (status->voxEn)
-        radio_checkVOX();   
+        //radio_checkVOX();   
 
     // Led control logic
     switch(status->opStatus)
     {
         case RX:
-            if(radio_checkRxDigitalSquelch())
+//            if(radio_checkRxDigitalSquelch())
+						if(false)
             {
                 platform_ledOn(GREEN);  // Red + green LEDs ("orange"): tone squelch open
                 platform_ledOn(RED);

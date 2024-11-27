@@ -19,10 +19,12 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <peripherals/gpio.h>
-#include <interfaces/delays.h>
-#include <interfaces/keyboard.h>
-#include "hwconfig.h"
+#include "gpio.h"
+#include "delays.h"
+#include "keyboard.h"
+#include "gpio-native.h"
+#include "pinmap.h"
+//#include "hwconfig.h"
 
 
 void kbd_init()

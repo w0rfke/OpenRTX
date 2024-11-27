@@ -21,7 +21,7 @@
 #ifndef ENGLISHSTRINGS_H
 #define ENGLISHSTRINGS_H
 
-#include "ui/ui_strings.h"
+#include "ui_strings.h"
 
 const stringsTable_t englishStrings =
 {

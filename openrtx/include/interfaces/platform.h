@@ -23,7 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <datetime.h>
-#include <hwconfig.h>
+//#include <hwconfig.h>
 
 #ifdef __cplusplus
 extern "C" {

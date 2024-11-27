@@ -65,20 +65,29 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-#include <ui/ui_default.h>
+#include "ui_default.h"
 #include <rtx.h>
-#include <interfaces/platform.h>
-#include <interfaces/display.h>
-#include <interfaces/cps_io.h>
-#include <interfaces/nvmem.h>
-#include <interfaces/delays.h>
+#include "platform.h"
+#include "display.h"
+#include "cps_io.h"
+//#include <interfaces/nvmem.h>
+#include "delays.h"
 #include <string.h>
 #include <battery.h>
 #include <input.h>
 #include <utils.h>
-#include <hwconfig.h>
+//#include <hwconfig.h>
 #include <voicePromptUtils.h>
-#include <beeps.h>
+//#include <beeps.h>
+#include "ST7735S.h"
+
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+extern UART_HandleTypeDef huart1;
+
+#ifndef PLATFORM_A36PLUS
+  #define PLATFORM_A36PLUS
+#endif
 
 /* UI main screen functions, their implementation is in "ui_main.c" */
 extern void _ui_drawMainBackground();
@@ -96,6 +105,7 @@ extern void _ui_drawMenuTop(ui_state_t* ui_state);
 extern void _ui_drawMenuBank(ui_state_t* ui_state);
 extern void _ui_drawMenuChannel(ui_state_t* ui_state);
 extern void _ui_drawMenuContacts(ui_state_t* ui_state);
+extern void _ui_drawSettingsSpectrum(ui_state_t* ui_state);
 #ifdef CONFIG_GPS
 extern void _ui_drawMenuGPS();
 extern void _ui_drawSettingsGPS(ui_state_t* ui_state);
@@ -537,16 +547,19 @@ static freq_t _ui_freq_add_digit(freq_t freq, uint8_t pos, uint8_t number)
 static void _ui_timedate_add_digit(datetime_t *timedate, uint8_t pos,
                                    uint8_t number)
 {
-    vp_flush();
-    vp_queueInteger(number);
+    //vp_flush();
+    //vp_queueInteger(number);
     if (pos == 2 || pos == 4)
-        vp_queuePrompt(PROMPT_SLASH);
+        //vp_queuePrompt(PROMPT_SLASH);
+		;
     // just indicates separation of date and time.
     if (pos==6) // start of time.
-        vp_queueString("hh:mm", vpAnnounceCommonSymbols|vpAnnounceLessCommonSymbols);
+        //vp_queueString("hh:mm", vpAnnounceCommonSymbols|vpAnnounceLessCommonSymbols);
+		;
     if (pos == 8)
-        vp_queuePrompt(PROMPT_COLON);
-    vp_play();
+        //vp_queuePrompt(PROMPT_COLON);
+		;
+    //vp_play();
 
     switch(pos)
     {
@@ -654,7 +667,7 @@ static int _ui_fsm_loadChannel(int16_t channel_index, bool *sync_rtx)
 
 static void _ui_fsm_confirmVFOInput(bool *sync_rtx)
 {
-    vp_flush();
+    //vp_flush();
     // Switch to TX input
     if(ui_state.input_set == SET_RX)
     {
@@ -662,10 +675,10 @@ static void _ui_fsm_confirmVFOInput(bool *sync_rtx)
         // Reset input position
         ui_state.input_position = 0;
         // announce the rx frequency just confirmed with Enter.
-        vp_queueFrequency(ui_state.new_rx_frequency);
+        //vp_queueFrequency(ui_state.new_rx_frequency);
         // defer playing till the end.
         // indicate that the user has moved to the tx freq field.
-        vp_announceInputReceiveOrTransmit(true, vpqDefault);
+        //vp_announceInputReceiveOrTransmit(true, vpqDefault);
     }
     else if(ui_state.input_set == SET_TX)
     {
@@ -685,18 +698,18 @@ static void _ui_fsm_confirmVFOInput(bool *sync_rtx)
             // force init to clear any prompts in progress.
             // defer play because play is called at the end of the function
             //due to above freq queuing.
-            vp_announceFrequencies(state.channel.rx_frequency,
-                                   state.channel.tx_frequency, vpqInit);
+            //vp_announceFrequencies(state.channel.rx_frequency,
+            //                       state.channel.tx_frequency, vpqInit);
         }
         else
         {
-            vp_announceError(vpqInit);
+            //vp_announceError(vpqInit);
         }
 
         state.ui_screen = MAIN_VFO;
     }
 
-    vp_play();
+    //vp_play();
 }
 
 static void _ui_fsm_insertVFONumber(kbd_msg_t msg, bool *sync_rtx)
@@ -704,15 +717,15 @@ static void _ui_fsm_insertVFONumber(kbd_msg_t msg, bool *sync_rtx)
     // Advance input position
     ui_state.input_position += 1;
     // clear any prompts in progress.
-    vp_flush();
+    //vp_flush();
     // Save pressed number to calculate frequency and show in GUI
     ui_state.input_number = input_getPressedNumber(msg);
     // queue the digit just pressed.
-    vp_queueInteger(ui_state.input_number);
+    //vp_queueInteger(ui_state.input_number);
     // queue  point if user has entered three digits.
     if (ui_state.input_position == 3)
-        vp_queuePrompt(PROMPT_POINT);
-
+        //vp_queuePrompt(PROMPT_POINT);
+			;
     if(ui_state.input_set == SET_RX)
     {
         if(ui_state.input_position == 1)
@@ -723,9 +736,9 @@ static void _ui_fsm_insertVFONumber(kbd_msg_t msg, bool *sync_rtx)
                                                        ui_state.input_number);
         if(ui_state.input_position >= FREQ_DIGITS)
         {// queue the rx freq just completed.
-            vp_queueFrequency(ui_state.new_rx_frequency);
+            //vp_queueFrequency(ui_state.new_rx_frequency);
             /// now queue tx as user has changed fields.
-            vp_queuePrompt(PROMPT_TRANSMIT);
+            //vp_queuePrompt(PROMPT_TRANSMIT);
             // Switch to TX input
             ui_state.input_set = SET_TX;
             // Reset input position
@@ -752,15 +765,15 @@ static void _ui_fsm_insertVFONumber(kbd_msg_t msg, bool *sync_rtx)
                 state.channel.tx_frequency = ui_state.new_tx_frequency;
                 *sync_rtx = true;
                 // play is called at end.
-                vp_announceFrequencies(state.channel.rx_frequency,
-                                       state.channel.tx_frequency, vpqInit);
+                //vp_announceFrequencies(state.channel.rx_frequency,
+                //                       state.channel.tx_frequency, vpqInit);
             }
 
             state.ui_screen = MAIN_VFO;
         }
     }
 
-    vp_play();
+    //vp_play();
 }
 
 #ifdef CONFIG_SCREEN_BRIGHTNESS
@@ -805,9 +818,9 @@ static void _ui_changeTimer(int variation)
 static void _ui_changeMacroLatch(bool newVal)
 {
     state.settings.macroMenuLatch = newVal ? 1 : 0;
-    vp_announceSettingsOnOffToggle(&currentLanguage->macroLatching,
-                                   vp_getVoiceLevelQueueFlags(),
-                                   state.settings.macroMenuLatch);
+    //vp_announceSettingsOnOffToggle(&currentLanguage->macroLatching,
+    //                               vp_getVoiceLevelQueueFlags(),
+    //                               state.settings.macroMenuLatch);
 }
 
 static inline void _ui_changeM17Can(int variation)
@@ -831,21 +844,21 @@ static void _ui_changeVoiceLevel(int variation)
                          | vpqAddSeparatingSilence
                          | vpqPlayImmediately;
 
-    if (!vp_isPlaying())
-    {
-        flags |= vpqIncludeDescriptions;
-    }
+    //if (!vp_isPlaying())
+    //{
+    //    flags |= vpqIncludeDescriptions;
+    //}
 
-    vp_announceSettingsVoiceLevel(flags);
+    //vp_announceSettingsVoiceLevel(flags);
 }
 
 static void _ui_changePhoneticSpell(bool newVal)
 {
     state.settings.vpPhoneticSpell = newVal ? 1 : 0;
 
-    vp_announceSettingsOnOffToggle(&currentLanguage->phonetic,
-                                   vp_getVoiceLevelQueueFlags(),
-                                   state.settings.vpPhoneticSpell);
+    //vp_announceSettingsOnOffToggle(&currentLanguage->phonetic,
+    //                               vp_getVoiceLevelQueueFlags(),
+    //                               state.settings.vpPhoneticSpell);
 }
 
 static bool _ui_checkStandby(long long time_since_last_event)
@@ -936,7 +949,7 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
     bool tone_tx_enable = state.channel.fm.txToneEn;
     bool tone_rx_enable = state.channel.fm.rxToneEn;
     uint8_t tone_flags = tone_tx_enable << 1 | tone_rx_enable;
-    vpQueueFlags_t queueFlags = vp_getVoiceLevelQueueFlags();
+    //vpQueueFlags_t queueFlags = vp_getVoiceLevelQueueFlags();
 
     switch(ui_state.input_number)
     {
@@ -955,11 +968,11 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
                 state.channel.fm.txTone %= MAX_TONE_INDEX;
                 state.channel.fm.rxTone = state.channel.fm.txTone;
                 *sync_rtx = true;
-                vp_announceCTCSS(state.channel.fm.rxToneEn,
-                                 state.channel.fm.rxTone,
-                                 state.channel.fm.txToneEn,
-                                 state.channel.fm.txTone,
-                                 queueFlags);
+                //vp_announceCTCSS(state.channel.fm.rxToneEn,
+                //                 state.channel.fm.rxTone,
+                //                 state.channel.fm.txToneEn,
+                //                 state.channel.fm.txTone,
+                //                 queueFlags);
             }
             break;
 
@@ -970,11 +983,11 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
                 state.channel.fm.txTone %= MAX_TONE_INDEX;
                 state.channel.fm.rxTone = state.channel.fm.txTone;
                 *sync_rtx = true;
-                vp_announceCTCSS(state.channel.fm.rxToneEn,
-                                 state.channel.fm.rxTone,
-                                 state.channel.fm.txToneEn,
-                                 state.channel.fm.txTone,
-                                 queueFlags);
+                //vp_announceCTCSS(state.channel.fm.rxToneEn,
+                //                 state.channel.fm.rxTone,
+                //                 state.channel.fm.txToneEn,
+                //                 state.channel.fm.txTone,
+                //                 queueFlags);
             }
             break;
         case 3:
@@ -987,11 +1000,11 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
                 state.channel.fm.txToneEn = tone_tx_enable;
                 state.channel.fm.rxToneEn = tone_rx_enable;
                 *sync_rtx = true;
-                vp_announceCTCSS(state.channel.fm.rxToneEn,
-                                 state.channel.fm.rxTone,
-                                 state.channel.fm.txToneEn,
-                                 state.channel.fm.txTone,
-                                 queueFlags |vpqIncludeDescriptions);
+                //vp_announceCTCSS(state.channel.fm.rxToneEn,
+                //                 state.channel.fm.rxTone,
+                //                 state.channel.fm.txToneEn,
+                //                 state.channel.fm.txTone,
+                //                 queueFlags |vpqIncludeDescriptions);
             }
             break;
         case 4:
@@ -1000,7 +1013,7 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
                 state.channel.bandwidth++;
                 state.channel.bandwidth %= 2;
                 *sync_rtx = true;
-                vp_announceBandwidth(state.channel.bandwidth, queueFlags);
+                //vp_announceBandwidth(state.channel.bandwidth, queueFlags);
             }
             break;
         case 5:
@@ -1014,7 +1027,7 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
             #endif
                 state.channel.mode = OPMODE_FM;
             *sync_rtx = true;
-            vp_announceRadioMode(state.channel.mode, queueFlags);
+            //vp_announceRadioMode(state.channel.mode, queueFlags);
             break;
         case 6:
             // Three power levels: 1W, 5W, 10W
@@ -1031,18 +1044,18 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
                     break;
             }
             *sync_rtx = true;
-            vp_announcePower(state.channel.power, queueFlags);
+            //vp_announcePower(state.channel.power, queueFlags);
             break;
 #ifdef CONFIG_SCREEN_BRIGHTNESS
         case 7:
             _ui_changeBrightness(-5);
-            vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
-                                   state.settings.brightness);
+            //vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
+            //                       state.settings.brightness);
             break;
         case 8:
             _ui_changeBrightness(+5);
-            vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
-                                   state.settings.brightness);
+            //vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
+            //                       state.settings.brightness);
             break;
 #endif
         case 9:
@@ -1066,7 +1079,7 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
         {
             state.settings.sqlLevel -= 1;
             *sync_rtx = true;
-            vp_announceSquelch(state.settings.sqlLevel, queueFlags);
+            //vp_announceSquelch(state.settings.sqlLevel, queueFlags);
         }
     }
 
@@ -1083,7 +1096,7 @@ static void _ui_fsm_menuMacro(kbd_msg_t msg, bool *sync_rtx)
         {
             state.settings.sqlLevel += 1;
             *sync_rtx = true;
-            vp_announceSquelch(state.settings.sqlLevel, queueFlags);
+            //vp_announceSquelch(state.settings.sqlLevel, queueFlags);
         }
     }
 }
@@ -1095,7 +1108,7 @@ static void _ui_menuUp(uint8_t menu_entries)
         ui_state.menu_selected -= 1;
     else
         ui_state.menu_selected = menu_entries - 1;
-    vp_playMenuBeepIfNeeded(ui_state.menu_selected==0);
+    //vp_playMenuBeepIfNeeded(ui_state.menu_selected==0);
 }
 
 static void _ui_menuDown(uint8_t menu_entries)
@@ -1105,7 +1118,7 @@ static void _ui_menuDown(uint8_t menu_entries)
         ui_state.menu_selected += 1;
     else
         ui_state.menu_selected = 0;
-    vp_playMenuBeepIfNeeded(ui_state.menu_selected==0);
+    //vp_playMenuBeepIfNeeded(ui_state.menu_selected==0);
 }
 
 static void _ui_menuBack(uint8_t prev_state)
@@ -1121,7 +1134,7 @@ static void _ui_menuBack(uint8_t prev_state)
         state.ui_screen = prev_state;
         // Reset menu selection
         ui_state.menu_selected = 0;
-        vp_playMenuBeepIfNeeded(true);
+        //vp_playMenuBeepIfNeeded(true);
     }
 }
 
@@ -1138,7 +1151,7 @@ static void _ui_textInputReset(char *buf)
 static void _ui_textInputKeypad(char *buf, uint8_t max_len, kbd_msg_t msg,
                          bool callsign)
 {
-    long long now = getTick();
+    long long now = HAL_GetTick();
     // Get currently pressed number key
     uint8_t num_key = input_getPressedChar(msg);
 
@@ -1182,7 +1195,7 @@ static void _ui_textInputKeypad(char *buf, uint8_t max_len, kbd_msg_t msg,
         buf[ui_state.input_position] = symbols_ITU_T_E161[num_key][ui_state.input_set];
     }
     // Announce the character
-    vp_announceInputChar(buf[ui_state.input_position]);
+    //vp_announceInputChar(buf[ui_state.input_position]);
     // Update reference values
     ui_state.input_number = num_key;
     ui_state.last_keypress = now;
@@ -1202,7 +1215,7 @@ static void _ui_textInputDel(char *buf)
     // underline since it means the field is empty.
     if(buf[ui_state.input_position]
     && buf[ui_state.input_position]!='_')
-        vp_announceInputChar(buf[ui_state.input_position]);
+        //vp_announceInputChar(buf[ui_state.input_position]);
 
     buf[ui_state.input_position] = '\0';
     // Move back input cursor
@@ -1218,7 +1231,7 @@ static void _ui_textInputDel(char *buf)
 
 static void _ui_numberInputKeypad(uint32_t *num, kbd_msg_t msg)
 {
-    long long now = getTick();
+    long long now = HAL_GetTick();
 
 #ifdef CONFIG_UI_NO_KEYBOARD
     // If knob is turned, increment or Decrement
@@ -1246,7 +1259,7 @@ static void _ui_numberInputKeypad(uint32_t *num, kbd_msg_t msg)
         *num *= 10;
 
     // Announce the character
-    vp_announceInputChar('0' + *num % 10);
+    //vp_announceInputChar('0' + *num % 10);
 
     // Update reference values
     ui_state.input_number = *num % 10;
@@ -1261,7 +1274,7 @@ static void _ui_numberInputKeypad(uint32_t *num, kbd_msg_t msg)
     *num += num_key;
 
     // Announce the character
-    vp_announceInputChar('0' + num_key);
+    //vp_announceInputChar('0' + num_key);
 
     // Update reference values
     ui_state.input_number = num_key;
@@ -1273,7 +1286,7 @@ static void _ui_numberInputKeypad(uint32_t *num, kbd_msg_t msg)
 static void _ui_numberInputDel(uint32_t *num)
 {
     // announce the digit about to be backspaced.
-    vp_announceInputChar('0' + *num % 10);
+    //vp_announceInputChar('0' + *num % 10);
 
     // Move back input cursor
     if(ui_state.input_position > 0)
@@ -1286,7 +1299,7 @@ static void _ui_numberInputDel(uint32_t *num)
 
 void ui_init()
 {
-    last_event_tick = getTick();
+    last_event_tick = HAL_GetTick();
     redraw_needed = true;
     _ui_calculateLayout(&layout);
     layout_ready = true;
@@ -1315,7 +1328,7 @@ void ui_drawSplashScreen()
     gfx_print(logo_orig, logo_font, TEXT_ALIGN_CENTER, yellow_fab413, "O P N\nR T X");
     gfx_print(call_orig, call_font, TEXT_ALIGN_CENTER, color_white, state.settings.callsign);
 
-    vp_announceSplashScreen();
+    //vp_announceSplashScreen();
 }
 
 void ui_saveState()
@@ -1337,7 +1350,7 @@ static vpGPSInfoFlags_t GetGPSDirectionOrSpeedChanged()
     if (!state.settings.gps_enabled)
         return vpGPSNone;
 
-    uint32_t now = getTick();
+    uint32_t now = HAL_GetTick();
     if (now - vpGPSLastUpdate < 8000)
         return vpGPSNone;
 
@@ -1426,14 +1439,14 @@ void ui_updateFSM(bool *sync_rtx)
         macro_menu = false;
     }
 
-    long long now = getTick();
+    long long now = HAL_GetTick();
     // Process pressed keys
     if(event.type == EVENT_KBD)
     {
         kbd_msg_t msg;
         msg.value = event.payload;
         bool f1Handled = false;
-        vpQueueFlags_t queueFlags = vp_getVoiceLevelQueueFlags();
+        //vpQueueFlags_t queueFlags = vp_getVoiceLevelQueueFlags();
         #ifdef PLATFORM_A36PLUS
         // If there is any key press, we need to clear the screen
         if (msg.keys)
@@ -1458,13 +1471,13 @@ void ui_updateFSM(bool *sync_rtx)
                     gfx_clearScreen();
                     #endif
                     macro_latched = true;
-                    vp_beep(BEEP_FUNCTION_LATCH_ON, LONG_BEEP);
+                    //vp_beep(BEEP_FUNCTION_LATCH_ON, LONG_BEEP);
                 }
                 else if (moniPressed && macro_latched)
                 {
                     macro_latched = false;
                     gfx_clearScreen();
-                    vp_beep(BEEP_FUNCTION_LATCH_OFF, LONG_BEEP);
+                    //vp_beep(BEEP_FUNCTION_LATCH_OFF, LONG_BEEP);
                 }
             }
 
@@ -1527,7 +1540,7 @@ void ui_updateFSM(bool *sync_rtx)
                             strncpy(state.settings.m17_dest, ui_state.new_callsign, 10);
                             ui_state.edit_mode = false;
                             *sync_rtx = true;
-                            vp_announceM17Info(NULL,  ui_state.edit_mode,
+                            //vp_announceM17Info(NULL,  ui_state.edit_mode,
                                                queueFlags);
                         }
                         else if(msg.keys & KEY_HASH)
@@ -1536,7 +1549,7 @@ void ui_updateFSM(bool *sync_rtx)
                             strncpy(state.settings.m17_dest, "", 1);
                             ui_state.edit_mode = false;
                             *sync_rtx = true;
-                            vp_announceM17Info(NULL,  ui_state.edit_mode,
+                            //vp_announceM17Info(NULL,  ui_state.edit_mode,
                                                queueFlags);
                         }
                         else if(msg.keys & KEY_ESC)
@@ -1572,9 +1585,9 @@ void ui_updateFSM(bool *sync_rtx)
                             // Switch to MEM screen
                             state.ui_screen = MAIN_MEM;
                             // anounce the active channel name.
-                            vp_announceChannelName(&state.channel,
-                                                   state.channel_index,
-                                                   queueFlags);
+                            //vp_announceChannelName(&state.channel,
+                            //                       state.channel_index,
+                            //                       queueFlags);
                         }
                     }
                     else if(msg.keys & KEY_HASH)
@@ -1587,7 +1600,7 @@ void ui_updateFSM(bool *sync_rtx)
                             ui_state.edit_mode = true;
                             // Reset text input variables
                             _ui_textInputReset(ui_state.new_callsign);
-                            vp_announceM17Info(NULL,  ui_state.edit_mode,
+                            //vp_announceM17Info(NULL,  ui_state.edit_mode,
                                                queueFlags);
                         }
                         else
@@ -1609,9 +1622,9 @@ void ui_updateFSM(bool *sync_rtx)
                             state.channel.rx_frequency += freq_steps[state.step_index];
                             state.channel.tx_frequency += freq_steps[state.step_index];
                             *sync_rtx = true;
-                            vp_announceFrequencies(state.channel.rx_frequency,
-                                                   state.channel.tx_frequency,
-                                                   queueFlags);
+                            //vp_announceFrequencies(state.channel.rx_frequency,
+                            //                       state.channel.tx_frequency,
+                            //                       queueFlags);
                         }
                     }
                     else if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
@@ -1623,9 +1636,9 @@ void ui_updateFSM(bool *sync_rtx)
                             state.channel.rx_frequency -= freq_steps[state.step_index];
                             state.channel.tx_frequency -= freq_steps[state.step_index];
                             *sync_rtx = true;
-                            vp_announceFrequencies(state.channel.rx_frequency,
-                                                   state.channel.tx_frequency,
-                                                   queueFlags);
+                            //vp_announceFrequencies(state.channel.rx_frequency,
+                            //                       state.channel.tx_frequency,
+                             //                      queueFlags);
                         }
                     }
                     else if(msg.keys & KEY_F1)
@@ -1633,10 +1646,11 @@ void ui_updateFSM(bool *sync_rtx)
                         if (state.settings.vpLevel > vpBeep)
                         {// quick press repeat vp, long press summary.
                             if (msg.long_press)
-                                vp_announceChannelSummary(&state.channel, 0,
-                                                          state.bank, vpAllInfo);
+                                //vp_announceChannelSummary(&state.channel, 0,
+                                 //                         state.bank, vpAllInfo);
+														;
                             else
-                                vp_replayLastPrompt();
+                                //vp_replayLastPrompt();
                             f1Handled = true;
                         }
                     }
@@ -1648,9 +1662,9 @@ void ui_updateFSM(bool *sync_rtx)
                         ui_state.input_position = 1;
                         ui_state.input_set = SET_RX;
                         // do not play  because we will also announce the number just entered.
-                        vp_announceInputReceiveOrTransmit(false, vpqInit);
-                        vp_queueInteger(input_getPressedNumber(msg));
-                        vp_play();
+                        //vp_announceInputReceiveOrTransmit(false, vpqInit);
+                        //vp_queueInteger(input_getPressedNumber(msg));
+                        //vp_play();
 
                         ui_state.new_rx_frequency = 0;
                         ui_state.new_tx_frequency = 0;
@@ -1680,12 +1694,12 @@ void ui_updateFSM(bool *sync_rtx)
                     if(ui_state.input_set == SET_RX)
                     {
                         ui_state.input_set = SET_TX;
-                        vp_announceInputReceiveOrTransmit(true, queueFlags);
+                        //vp_announceInputReceiveOrTransmit(true, queueFlags);
                     }
                     else if(ui_state.input_set == SET_TX)
                     {
                         ui_state.input_set = SET_RX;
-                        vp_announceInputReceiveOrTransmit(false, queueFlags);
+                        //vp_announceInputReceiveOrTransmit(false, queueFlags);
                     }
                     // Reset input position
                     ui_state.input_position = 0;
@@ -1734,15 +1748,17 @@ void ui_updateFSM(bool *sync_rtx)
                                 // Quick press repeat vp, long press summary.
                                 if (msg.long_press)
                                 {
-                                    vp_announceChannelSummary(
-                                            &state.channel,
-                                            state.channel_index,
-                                            state.bank,
-                                            vpAllInfo);
+                                    //vp_announceChannelSummary(
+                                    //        &state.channel,
+                                    //        state.channel_index,
+                                    //        state.bank,
+                                    //        vpAllInfo);
+																	;
                                 }
                                 else
                                 {
-                                    vp_replayLastPrompt();
+																	;
+                                   // vp_replayLastPrompt();
                                 }
 
                                 f1Handled = true;
@@ -1799,13 +1815,15 @@ void ui_updateFSM(bool *sync_rtx)
                         {// quick press repeat vp, long press summary.
                             if (msg.long_press)
                             {
-                                vp_announceChannelSummary(&state.channel,
-                                                          state.channel_index+1,
-                                                          state.bank, vpAllInfo);
+                                //vp_announceChannelSummary(&state.channel,
+                                //                          state.channel_index+1,
+                                //                          state.bank, vpAllInfo);
+															;
                             }
                             else
                             {
-                                vp_replayLastPrompt();
+                               // vp_replayLastPrompt();
+															;
                             }
 
                             f1Handled = true;
@@ -1825,9 +1843,9 @@ void ui_updateFSM(bool *sync_rtx)
                         #else
                         _ui_fsm_loadChannel(state.channel_index + 1, sync_rtx);
                         #endif
-                        vp_announceChannelName(&state.channel,
-                                               state.channel_index+1,
-                                               queueFlags);
+                        //vp_announceChannelName(&state.channel,
+                        //                       state.channel_index+1,
+                        //                       queueFlags);
                     }
                     else if(msg.keys & KEY_DOWN || msg.keys & KNOB_LEFT)
                     {
@@ -1843,9 +1861,9 @@ void ui_updateFSM(bool *sync_rtx)
                         #else
                         _ui_fsm_loadChannel(state.channel_index - 1, sync_rtx);
                         #endif
-                        vp_announceChannelName(&state.channel,
-                                               state.channel_index+1,
-                                               queueFlags);
+                        //vp_announceChannelName(&state.channel,
+                        //                       state.channel_index+1,
+                        //                       queueFlags);
                     }
                 }
                 break;
@@ -1984,9 +2002,10 @@ void ui_updateFSM(bool *sync_rtx)
                 if ((msg.keys & KEY_F1) && (state.settings.vpLevel > vpBeep))
                 {// quick press repeat vp, long press summary.
                     if (msg.long_press)
-                        vp_announceGPSInfo(vpGPSAll);
+                        //vp_announceGPSInfo(vpGPSAll);
+								;
                     else
-                        vp_replayLastPrompt();
+                        //vp_replayLastPrompt();
                     f1Handled = true;
                 }
                 else if(msg.keys & KEY_ESC)
@@ -2005,7 +2024,7 @@ void ui_updateFSM(bool *sync_rtx)
                 }
                 if(msg.keys & KEY_ESC) {
                     state.rtxStatus = RTX_RX;
-                    radio_enableRx();
+                    //radio_enableRx();
                     display_init();
                     _ui_menuBack(MENU_TOP);
                 }
@@ -2014,7 +2033,7 @@ void ui_updateFSM(bool *sync_rtx)
                     spectrum_changeFrequency(freq_steps[state.settings.spectrum_step]/10*32);
                     // Enable corresponding filters
                     #ifndef PLATFORM_LINUX
-                    radio_setRxFilters(state.spectrum_startFreq);
+                    //radio_setRxFilters(state.spectrum_startFreq);
                     #endif
                     state.spectrum_currentPart = 0;
                 }
@@ -2023,7 +2042,7 @@ void ui_updateFSM(bool *sync_rtx)
                     spectrum_changeFrequency(-(freq_steps[state.settings.spectrum_step]/10*32));
                     // Enable corresponding filters
                     #ifndef PLATFORM_LINUX
-                    radio_setRxFilters(state.spectrum_startFreq);
+                    //radio_setRxFilters(state.spectrum_startFreq);
                     #endif
                     state.spectrum_currentPart = 0;
                 }
@@ -2059,7 +2078,7 @@ void ui_updateFSM(bool *sync_rtx)
 #ifdef PLATFORM_A36PLUS
                         case S_SPECTRUM:
                             state.ui_screen = SETTINGS_SPECTRUM;
-                            break;                            
+                            break;
 #endif
                         case S_M17:
                             state.ui_screen = SETTINGS_M17;
@@ -2141,8 +2160,8 @@ void ui_updateFSM(bool *sync_rtx)
                     // Reset input position and selection
                     ui_state.input_position = 0;
                     memset(&ui_state.new_timedate, 0, sizeof(datetime_t));
-                    vp_announceBuffer(&currentLanguage->timeAndDate,
-                                      true, false, "dd/mm/yy");
+                    //vp_announceBuffer(&currentLanguage->timeAndDate,
+                    //                  true, false, "dd/mm/yy");
                 }
                 else if(msg.keys & KEY_ESC)
                     _ui_menuBack(MENU_SETTINGS);
@@ -2160,7 +2179,7 @@ void ui_updateFSM(bool *sync_rtx)
                                                          state.settings.utc_timezone);
                     platform_setTime(utc_time);
                     state.time = utc_time;
-                    vp_announceSettingsTimeDate();
+                    //vp_announceSettingsTimeDate();
                     state.ui_screen = SETTINGS_TIMEDATE;
                 }
                 else if(msg.keys & KEY_ESC)
@@ -2186,20 +2205,20 @@ void ui_updateFSM(bool *sync_rtx)
 #ifdef CONFIG_SCREEN_BRIGHTNESS
                         case D_BRIGHTNESS:
                             _ui_changeBrightness(-5);
-                            vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
-                                                   state.settings.brightness);
+                            //vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
+                            //                       state.settings.brightness);
                             break;
 #endif
 #ifdef CONFIG_SCREEN_CONTRAST
                         case D_CONTRAST:
                             _ui_changeContrast(-4);
-                            vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
-                                                   state.settings.contrast);
+                            //vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
+                            //                       state.settings.contrast);
                             break;
 #endif
                         case D_TIMER:
                             _ui_changeTimer(-1);
-                            vp_announceDisplayTimer();
+                            //vp_announceDisplayTimer();
                             break;
                         default:
                             state.ui_screen = SETTINGS_DISPLAY;
@@ -2213,20 +2232,20 @@ void ui_updateFSM(bool *sync_rtx)
 #ifdef CONFIG_SCREEN_BRIGHTNESS
                         case D_BRIGHTNESS:
                             _ui_changeBrightness(+5);
-                            vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
-                                                   state.settings.brightness);
+                            //vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
+                            //                       state.settings.brightness);
                             break;
 #endif
 #ifdef CONFIG_SCREEN_CONTRAST
                         case D_CONTRAST:
                             _ui_changeContrast(+4);
-                            vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
-                                                   state.settings.contrast);
+                            //vp_announceSettingsInt(&currentLanguage->brightness, queueFlags,
+                            //                       state.settings.contrast);
                             break;
 #endif
                         case D_TIMER:
                             _ui_changeTimer(+1);
-                            vp_announceDisplayTimer();
+                            //vp_announceDisplayTimer();
                             break;
                         default:
                             state.ui_screen = SETTINGS_DISPLAY;
@@ -2251,7 +2270,7 @@ void ui_updateFSM(bool *sync_rtx)
                             if(state.settings.spectrum_multiplier > 0)
                                 state.settings.spectrum_multiplier -= 1;
                             else
-                                state.settings.spectrum_multiplier = 4;       
+                                state.settings.spectrum_multiplier = 4;
                             break;
                         case SP_STEP:
                             if(state.settings.spectrum_step > 0)
@@ -2302,15 +2321,15 @@ void ui_updateFSM(bool *sync_rtx)
                                 state.settings.gps_enabled = 0;
                             else
                                 state.settings.gps_enabled = 1;
-                            vp_announceSettingsOnOffToggle(&currentLanguage->gpsEnabled,
-                                                           queueFlags,
-                                                           state.settings.gps_enabled);
+                            //vp_announceSettingsOnOffToggle(&currentLanguage->gpsEnabled,
+                            //                               queueFlags,
+                            //                               state.settings.gps_enabled);
                             break;
                         case G_SET_TIME:
                             state.gps_set_time = !state.gps_set_time;
-                            vp_announceSettingsOnOffToggle(&currentLanguage->gpsSetTime,
-                                                           queueFlags,
-                                                           state.gps_set_time);
+                            //vp_announceSettingsOnOffToggle(&currentLanguage->gpsSetTime,
+                            //                               queueFlags,
+                            //                               state.gps_set_time);
                             break;
                         case G_TIMEZONE:
                             if(msg.keys & KEY_LEFT || msg.keys & KEY_DOWN ||
@@ -2319,7 +2338,7 @@ void ui_updateFSM(bool *sync_rtx)
                             else if(msg.keys & KEY_RIGHT || msg.keys & KEY_UP ||
                                     msg.keys & KNOB_RIGHT)
                                 state.settings.utc_timezone += 1;
-                            vp_announceTimeZone(state.settings.utc_timezone, queueFlags);
+                            //vp_announceTimeZone(state.settings.utc_timezone, queueFlags);
                             break;
                         default:
                             state.ui_screen = SETTINGS_GPS;
@@ -2355,16 +2374,16 @@ void ui_updateFSM(bool *sync_rtx)
 #endif
                                 // Apply new offset
                                 state.channel.tx_frequency = state.channel.rx_frequency + ui_state.new_offset;
-                                vp_queueStringTableEntry(&currentLanguage->frequencyOffset);
-                                vp_queueFrequency(ui_state.new_offset);
+                                //vp_queueStringTableEntry(&currentLanguage->frequencyOffset);
+                                //vp_queueFrequency(ui_state.new_offset);
                                 ui_state.edit_mode = false;
                             }
                             else
                             if(msg.keys & KEY_ESC)
                             {
                                 // Announce old frequency offset
-                                vp_queueStringTableEntry(&currentLanguage->frequencyOffset);
-                                vp_queueFrequency((int32_t)state.channel.tx_frequency - (int32_t)state.channel.rx_frequency);
+                                //vp_queueStringTableEntry(&currentLanguage->frequencyOffset);
+                                //vp_queueFrequency((int32_t)state.channel.tx_frequency - (int32_t)state.channel.rx_frequency);
                             }
                             else if(msg.keys & KEY_UP || msg.keys & KEY_DOWN ||
                                     msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
@@ -2382,7 +2401,7 @@ void ui_updateFSM(bool *sync_rtx)
                             }
                             else if (msg.long_press && (msg.keys & KEY_F1) && (state.settings.vpLevel > vpBeep))
                             {
-                                vp_queueFrequency(ui_state.new_offset);
+                                //vp_queueFrequency(ui_state.new_offset);
                                 f1Handled=true;
                             }
                             break;
@@ -2405,8 +2424,8 @@ void ui_updateFSM(bool *sync_rtx)
                             {
                                 // Cycle over the available modulations
                                 state.settings.rx_modulation = !state.settings.rx_modulation;
-                                bk4819_set_modulation(state.settings.rx_modulation); // required for instant feedback
-                                radio_updateConfiguration();
+                                //bk4819_set_modulation(state.settings.rx_modulation); // required for instant feedback
+                                //radio_updateConfiguration();
                             }
                             break;
                         case R_STEP:
@@ -2459,15 +2478,15 @@ void ui_updateFSM(bool *sync_rtx)
                                 // Save selected callsign and disable input mode
                                 strncpy(state.settings.callsign, ui_state.new_callsign, 10);
                                 ui_state.edit_mode = false;
-                                vp_announceBuffer(&currentLanguage->callsign,
-                                                  false, true, state.settings.callsign);
+                                //vp_announceBuffer(&currentLanguage->callsign,
+                                //                  false, true, state.settings.callsign);
                             }
                             else if(msg.keys & KEY_ESC)
                             {
                                 // Discard selected callsign and disable input mode
                                 ui_state.edit_mode = false;
-                                vp_announceBuffer(&currentLanguage->callsign,
-                                                  false, true, state.settings.callsign);
+                                //vp_announceBuffer(&currentLanguage->callsign,
+                                //                  false, true, state.settings.callsign);
                             }
                             else if(msg.keys & KEY_UP || msg.keys & KEY_DOWN ||
                                      msg.keys & KEY_LEFT || msg.keys & KEY_RIGHT)
@@ -2480,8 +2499,8 @@ void ui_updateFSM(bool *sync_rtx)
                             }
                             else if (msg.long_press && (msg.keys & KEY_F1) && (state.settings.vpLevel > vpBeep))
                             {
-                                vp_announceBuffer(&currentLanguage->callsign,
-                                                  true, true, ui_state.new_callsign);
+                                //vp_announceBuffer(&currentLanguage->callsign,
+                                //                  true, true, ui_state.new_callsign);
                                 f1Handled=true;
                             }
                             break;
@@ -2521,8 +2540,8 @@ void ui_updateFSM(bool *sync_rtx)
                         if(ui_state.menu_selected == M17_CALLSIGN)
                         {
                             _ui_textInputReset(ui_state.new_callsign);
-                            vp_announceBuffer(&currentLanguage->callsign,
-                                            true, true, ui_state.new_callsign);
+                            //vp_announceBuffer(&currentLanguage->callsign,
+                            //                true, true, ui_state.new_callsign);
                         }
                     }
                     else if(msg.keys & KEY_UP || msg.keys & KNOB_LEFT)
@@ -2623,20 +2642,20 @@ void ui_updateFSM(bool *sync_rtx)
         }
         if (!f1Handled && (msg.keys & KEY_F1) && (state.settings.vpLevel > vpBeep))
         {
-            vp_replayLastPrompt();
+            //vp_replayLastPrompt();
         }
         else if ((priorUIScreen!=state.ui_screen) && state.settings.vpLevel > vpLow)
         {
             // When we switch to VFO or Channel screen, we need to announce it.
             // Likewise for information screens.
             // All other cases are handled as needed.
-            vp_announceScreen(state.ui_screen);
+            //vp_announceScreen(state.ui_screen);
         }
         // generic beep for any keydown if beep is enabled.
         // At vp levels higher than beep, keys will generate voice so no need
         // to beep or you'll get an unwanted click.
         if ((msg.keys &0xffff) && (state.settings.vpLevel == vpBeep))
-            vp_beep(BEEP_KEY_GENERIC, SHORT_BEEP);
+            //vp_beep(BEEP_KEY_GENERIC, SHORT_BEEP);
         // If we exit and re-enter the same menu, we want to ensure it speaks.
         if (msg.keys & KEY_ESC)
             _ui_reset_menu_anouncement_tracking();
@@ -2651,7 +2670,7 @@ void ui_updateFSM(bool *sync_rtx)
         {// automatically read speed and direction changes only!
             vpGPSInfoFlags_t whatChanged = GetGPSDirectionOrSpeedChanged();
             if (whatChanged != vpGPSNone)
-                vp_announceGPSInfo(whatChanged);
+                //vp_announceGPSInfo(whatChanged);
         }
 #endif //            CONFIG_GPS
 
@@ -2678,11 +2697,14 @@ bool ui_updateGUI()
         _ui_calculateLayout(&layout);
         layout_ready = true;
     }
+
     // Draw current GUI page
+
     switch(last_state.ui_screen)
     {
         // VFO main screen
         case MAIN_VFO:
+					return 0;
         #ifdef PLATFORM_A36PLUS
             if(!macro_menu)
                 _ui_drawMainVFO(&ui_state);
@@ -2694,7 +2716,7 @@ bool ui_updateGUI()
         #endif
             break;
         // VFO frequency input screen
-        case MAIN_VFO_INPUT:
+				case MAIN_VFO_INPUT:
             if(!macro_menu)
                 _ui_drawMainVFOInput(&ui_state);
             break;
@@ -2733,9 +2755,9 @@ bool ui_updateGUI()
             break;
 #endif
 #ifdef PLATFORM_A36PLUS
-        case MENU_SPECTRUM:
-            _ui_drawMenuSpectrum(&ui_state);
-            break;
+        //case MENU_SPECTRUM:
+        //    _ui_drawMenuSpectrum(&ui_state);
+        //    break;
 #endif
         // Settings menu screen
         case MENU_SETTINGS:
@@ -2807,7 +2829,6 @@ bool ui_updateGUI()
             _ui_drawLowBatteryScreen();
             break;
     }
-
     // If MACRO menu is active draw it,
     // but only in the main screens
     if(macro_menu && (last_state.ui_screen <= 2)) // MAIN_VFO, MAIN_MEM, MENU_TOP

@@ -23,10 +23,12 @@
 
 #include <datatypes.h>
 #include <settings.h>
-#include <pthread.h>
+//#include <pthread.h>
 #include <stdbool.h>
 #include <cps.h>
 #include <gps.h>
+#include <stdint.h>
+#include <stddef.h>
 
 /**
  * Part of this structure has been commented because the corresponding
@@ -101,7 +103,7 @@ enum DeviceStatus
 };
 
 extern state_t state;
-extern pthread_mutex_t state_mutex;
+//extern pthread_mutex_t state_mutex;
 
 /**
  * Initialise radio state mutex and radio state variable, reading the

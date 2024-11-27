@@ -18,14 +18,20 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/platform.h>
-#include <interfaces/cps_io.h>
+#include "platform.h"
+//#include <interfaces/cps_io.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <ui/ui_default.h>
+#include "ui_default.h"
 #include <string.h>
-#include <ui/ui_strings.h>
+//#include <ui/ui_strings.h>
 #include <utils.h>
+#include "ST7735S.h"
+#include "rtx.h"
+
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+extern UART_HandleTypeDef huart1;
 
 void _ui_drawMainBackground()
 {
@@ -339,7 +345,7 @@ void _ui_drawMainVFO(ui_state_t* ui_state)
 
 void _ui_drawMainVFOInput(ui_state_t* ui_state)
 {
-    _ui_drawMainTop(ui_state);
+	  _ui_drawMainTop(ui_state);
     gfx_clearWindow(32, 0, 48, 160);
     _ui_drawVFOMiddleInput(ui_state);
     _ui_drawMainBottom(ui_state);

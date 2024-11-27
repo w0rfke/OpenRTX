@@ -22,7 +22,7 @@
 #ifndef SPANISHSTRINGS_H
 #define SPANISHSTRINGS_H
 
-#include "ui/ui_strings.h"
+#include "ui_strings.h"
 
 const stringsTable_t spanishStrings =
 {

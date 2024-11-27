@@ -17,10 +17,11 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/delays.h>
+#include "delays.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <input.h>
+#include "ST7735S.h"
 
 static long long  keyTs[KBD_NUM_KEYS];  // Timestamp of each keypress
 static uint32_t   longPressSent;        // Flags to manage long-press events
@@ -32,7 +33,7 @@ bool input_scanKeyboard(kbd_msg_t *msg)
     bool kbd_event = false;
 
     keyboard_t keys = kbd_getKeys();
-    long long now   = getTick();
+    long long now   = HAL_GetTick();
 
     // The key status has changed
     if(keys != prevKeys)

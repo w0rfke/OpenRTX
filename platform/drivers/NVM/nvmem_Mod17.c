@@ -18,11 +18,13 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/nvmem.h>
+//#include <interfaces/nvmem.h>
 #include <calibInfo_Mod17.h>
 #include <string.h>
 #include <crc.h>
 #include "flash.h"
+#include <settings.h>
+
 
 /*
  * Data structures defining the memory layout used for saving and restore
@@ -106,24 +108,26 @@ void nvm_terminate()
 {
 
 }
-
+/*
 size_t nvm_getMemoryAreas(const struct nvmArea **list)
 {
     *list = NULL;
 
     return 0;
 }
+*/
 
 void nvm_readCalibData(void *buf)
 {
     (void) buf;
 }
-
+/*
 void nvm_readHwInfo(hwInfo_t *info)
 {
     (void) info;
 }
-
+*/
+/*
 int nvm_readVfoChannelData(channel_t *channel)
 {
     // Module 17 has no channels: just load default values for it
@@ -139,6 +143,7 @@ int nvm_readVfoChannelData(channel_t *channel)
 
     return 0;
 }
+*/
 
 int nvm_readSettings(settings_t *settings)
 {
@@ -166,9 +171,9 @@ int nvm_writeSettings(const settings_t *settings)
      */
     if((block < 0) || (block >= 2047))
     {
-        flash_eraseSector(11);
+        //flash_eraseSector(11);
         addr = ((uint32_t) &(memory->magic));
-        flash_write(addr, &MEM_MAGIC, sizeof(MEM_MAGIC));
+        //flash_write(addr, &MEM_MAGIC, sizeof(MEM_MAGIC));
         block = 0;
     }
     else
@@ -190,18 +195,20 @@ int nvm_writeSettings(const settings_t *settings)
 
     // Save data
     addr = ((uint32_t) &(memory->data[block]));
-    flash_write(addr, &tmpBlock, sizeof(dataBlock_t));
+    //flash_write(addr, &tmpBlock, sizeof(dataBlock_t));
 
     // Update the flags marking used data blocks
     uint32_t flag = ~(1 << (block % 32));
     addr = ((uint32_t) &(memory->flags[block / 32]));
-    flash_write(addr, &flag, sizeof(uint32_t));
+    //flash_write(addr, &flag, sizeof(uint32_t));
 
     return 0;
 }
 
+/*
 int nvm_writeSettingsAndVfo(const settings_t *settings, const channel_t *vfo)
 {
     (void) vfo;
     return nvm_writeSettings(settings);
 }
+*/

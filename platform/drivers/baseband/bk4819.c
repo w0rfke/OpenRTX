@@ -387,24 +387,27 @@ int16_t bk4819_get_rssi(void)
 uint16_t bk4819_get_mic_level(void)
 {
     // bits 6:0 of AF TX/RX Input Amplitude
-    return (ReadRegister(0x6f) & 0x7f) * 2;
+    //return (ReadRegister(0x6f) & 0x7f) * 2;
+    return (uint16_t)128;
 }
 
 void bk4819_enable_freq_scan(uint8_t scna_time){
-    WriteRegister(BK4819_REG_32, ReadRegister(BK4819_REG_32) | BITV(scna_time, 14));
-    WriteRegister(BK4819_REG_32, ReadRegister(BK4819_REG_32) | 0x01);
+//    WriteRegister(BK4819_REG_32, ReadRegister(BK4819_REG_32) | BITV(scna_time, 14));
+//    WriteRegister(BK4819_REG_32, ReadRegister(BK4819_REG_32) | 0x01);
 }
 
 void bk4819_disable_freq_scan(void){
-     WriteRegister(BK4819_REG_32, ReadRegister(BK4819_REG_32) & (~0x01));
+//     WriteRegister(BK4819_REG_32, ReadRegister(BK4819_REG_32) & (~0x01));
 }
 
 uint8_t bk4819_get_scan_freq_flag(void){
-    return ReadRegister(BK4819_REG_0D) & BIT(15);
+//    return ReadRegister(BK4819_REG_0D) & BIT(15);
+        return 0;
 }
 
 uint32_t bk4819_get_scan_freq(void){
-    return ((ReadRegister(BK4819_REG_0D) << 16) | ReadRegister(BK4819_REG_0E)) / 10;
+//    return ((ReadRegister(BK4819_REG_0D) << 16) | ReadRegister(BK4819_REG_0E)) / 10;
+        return 0;
 }
 
 void BK4819_SetAF(uint8_t AF)
@@ -412,8 +415,8 @@ void BK4819_SetAF(uint8_t AF)
 	// AF Output Inverse Mode = Inverse
 	// Undocumented bits 0x2040
 	//
-//	WriteRegister(BK4819_REG_47, 0x6040 | (AF << 8));
-	WriteRegister(BK4819_REG_47, (6u << 12) | (AF << 8) | (1u << 6));
+////	WriteRegister(BK4819_REG_47, 0x6040 | (AF << 8));
+//	WriteRegister(BK4819_REG_47, (6u << 12) | (AF << 8) | (1u << 6));
 }
 
 __inline uint16_t scale_freq(const uint16_t freq)
@@ -426,17 +429,17 @@ void BK4819_BeepStart(uint16_t Frequency, bool bTuningGainSwitch)
 {
 	
     //gpio_setPin(MIC_SPK_EN);              
-	WriteRegister(BK4819_REG_50, 0x3B20);
-    BK4819_SetAF(3); // AF Beep
-	uint16_t ToneConfig = BK4819_REG_70_ENABLE_TONE1;
-    ToneConfig |=  96u << BK4819_REG_70_SHIFT_TONE1_TUNING_GAIN;
-	WriteRegister(BK4819_REG_70, ToneConfig);  
-
-	WriteRegister(BK4819_REG_71, scale_freq(Frequency));
-    WriteRegister(BK4819_REG_30, 0);
-	WriteRegister(BK4819_REG_30, BK4819_REG_30_ENABLE_AF_DAC | BK4819_REG_30_ENABLE_DISC_MODE | BK4819_REG_30_ENABLE_TX_DSP);
-    //usart0_IRQwrite("BK4819_PlayTone\r\n");
-    WriteRegister(BK4819_REG_50, 0x3B20);
+//	WriteRegister(BK4819_REG_50, 0x3B20);
+//    BK4819_SetAF(3); // AF Beep
+//	uint16_t ToneConfig = BK4819_REG_70_ENABLE_TONE1;
+//    ToneConfig |=  96u << BK4819_REG_70_SHIFT_TONE1_TUNING_GAIN;
+//	WriteRegister(BK4819_REG_70, ToneConfig);
+//
+//	WriteRegister(BK4819_REG_71, scale_freq(Frequency));
+//    WriteRegister(BK4819_REG_30, 0);
+//	WriteRegister(BK4819_REG_30, BK4819_REG_30_ENABLE_AF_DAC | BK4819_REG_30_ENABLE_DISC_MODE | BK4819_REG_30_ENABLE_TX_DSP);
+        //usart0_IRQwrite("BK4819_PlayTone\r\n");
+//    WriteRegister(BK4819_REG_50, 0x3B20);
     // for(int i = 0; i < 1000; i++)
     // {
     //     WriteRegister(BK4819_REG_71,scale_freq((i % 2) ? 1200 : 2200));
@@ -447,7 +450,7 @@ void BK4819_BeepStart(uint16_t Frequency, bool bTuningGainSwitch)
 
 void BK4819_BeepStop(void)
 {
-    WriteRegister(BK4819_REG_50, 0xBB20);   
+//    WriteRegister(BK4819_REG_50, 0xBB20);
 	// WriteRegister(BK4819_REG_30, 0xC1FE);
     //BK4819_SetAF(1);
 }

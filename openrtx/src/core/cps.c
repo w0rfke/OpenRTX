@@ -18,7 +18,7 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/platform.h>
+#include "platform.h"
 #include <cps.h>
 
 channel_t cps_getDefaultChannel()

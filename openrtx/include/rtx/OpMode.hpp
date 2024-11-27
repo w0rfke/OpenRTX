@@ -21,7 +21,7 @@
 #ifndef OPMODE_H
 #define OPMODE_H
 
-#include <interfaces/delays.h>
+#include "delays.h"
 #include "rtx.h"
 
 /**

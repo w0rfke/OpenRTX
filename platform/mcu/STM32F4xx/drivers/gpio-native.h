@@ -18,8 +18,9 @@
 #ifndef GPIO_NATIVE_H
 #define GPIO_NATIVE_H
 
-#include <peripherals/gpio.h>
-#include <stm32f4xx.h>
+//#include <peripherals/gpio.h>
+//#include <stm32f4xx.h>
+#include "main.h"
 #include <stdint.h>
 
 #ifdef __cplusplus

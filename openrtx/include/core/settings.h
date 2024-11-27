@@ -20,8 +20,9 @@
 
 #ifndef SETTINGS_H
 #define SETTINGS_H
+#define PLATFORM_A36PLUS
 
-#include <hwconfig.h>
+//#include <hwconfig.h>
 #include <stdbool.h>
 
 typedef enum

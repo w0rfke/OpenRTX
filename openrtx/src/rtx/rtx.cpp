@@ -18,19 +18,19 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/radio.h>
-#include <hwconfig.h>
+//#include <interfaces/radio.h>
+//#include <hwconfig.h>
 #include <string.h>
 #include <rtx.h>
 #include <OpMode_FM.hpp>
-#include <OpMode_M17.hpp>
+//#include <OpMode_M17.hpp>
 #include <state.h>
 #ifdef PLATFORM_A36PLUS
-#include <platform/drivers/baseband/bk4819.h>
+//#include <platform/drivers/baseband/bk4819.h>
 #endif
 
 extern state_t state;
-static pthread_mutex_t   *cfgMutex;     // Mutex for incoming config messages
+//static pthread_mutex_t   *cfgMutex;     // Mutex for incoming config messages
 static const rtxStatus_t *newCnf;       // Pointer for incoming config messages
 static rtxStatus_t        rtxStatus;    // RTX driver status
 static rssi_t             rssi;         // Current RSSI in dBm
@@ -40,15 +40,16 @@ static OpMode  *currMode;               // Pointer to currently active opMode ha
 static OpMode     noMode;               // Empty opMode handler for opmode::NONE
 static OpMode_FM  fmMode;               // FM mode handler
 #ifdef CONFIG_M17
-static OpMode_M17 m17Mode;              // M17 mode handler
+//static OpMode_M17 m17Mode;              // M17 mode handler
 #endif
 
 
-void rtx_init(pthread_mutex_t *m)
+//void rtx_init(pthread_mutex_t *m)
+void rtx_init()
 {
     // Initialise mutex for configuration access
-    cfgMutex = m;
-    newCnf   = NULL;
+//    cfgMutex = m;
+//    newCnf   = NULL;
 
     /*
      * Default initialisation for rtx status
@@ -77,13 +78,14 @@ void rtx_init(pthread_mutex_t *m)
     /*
      * Initialise low-level platform-specific driver
      */
-    radio_init(&rtxStatus);
-    radio_updateConfiguration();
+//    radio_init(&rtxStatus);
+//    radio_updateConfiguration();
 
     /*
      * Initial value for RSSI filter
      */
-    rssi         = radio_getRssi();
+    //rssi         = radio_getRssi();
+		rssi         = -123.0f;
     reinitFilter = false;
 }
 
@@ -92,20 +94,20 @@ void rtx_terminate()
     rtxStatus.opStatus = OFF;
     rtxStatus.opMode   = OPMODE_NONE;
     currMode->disable();
-    radio_terminate();
+//    radio_terminate();
 }
 
 void rtx_configure(const rtxStatus_t *cfg)
 {
-    /*
-     * NOTE: an incoming configuration may overwrite a preceding one not yet
-     * read by the radio task. This mechanism ensures that the radio driver
-     * always gets the most recent configuration.
-     */
-
-    pthread_mutex_lock(cfgMutex);
+//    /*
+//     * NOTE: an incoming configuration may overwrite a preceding one not yet
+//     * read by the radio task. This mechanism ensures that the radio driver
+//     * always gets the most recent configuration.
+//     */
+//
+//    pthread_mutex_lock(cfgMutex);
     newCnf = cfg;
-    pthread_mutex_unlock(cfgMutex);
+//    pthread_mutex_unlock(cfgMutex);
 }
 
 rtxStatus_t rtx_getCurrentStatus()
@@ -117,7 +119,8 @@ void rtx_task()
 {
     // Check if there is a pending new configuration and, in case, read it.
     bool reconfigure = false;
-    if(pthread_mutex_trylock(cfgMutex) == 0)
+    //if(pthread_mutex_trylock(cfgMutex) == 0)
+	  if(true)
     {
         if(newCnf != NULL)
         {
@@ -130,7 +133,7 @@ void rtx_task()
             newCnf = NULL;
         }
 
-        pthread_mutex_unlock(cfgMutex);
+        //pthread_mutex_unlock(cfgMutex);
     }
 
         /* Spectrum update block, run when in SPECTRUM mode.
@@ -138,7 +141,7 @@ void rtx_task()
     * The spectrum mode is a special mode where the radio is in RX mode but
     * the audio path is disabled. This allows to display the RSSI level of the
     * received signals across a frequency range in a waterfall-like display.
-    * 
+    *
     * This block writes the received RSSI levels to the spectrum buffer.
     */
     #ifdef PLATFORM_A36PLUS
@@ -153,8 +156,9 @@ void rtx_task()
         // Write the RSSI level to the spectrum buffer
         for (int i = 0; i < SPECTRUM_WF_LINES; i++)
         {
-            bk4819_set_freq((state.spectrum_startFreq + i * spectrumStep));
-            rssi = radio_getRssi();
+            //bk4819_set_freq((state.spectrum_startFreq + i * spectrumStep));
+            //rssi = radio_getRssi();
+					  rssi = -123.0f;
             // uint8_t height = (rssi + 160) / 2;
             // Macro for log2, not using the math library
             #define log2(x) (31 - __builtin_clz(x))
@@ -169,11 +173,12 @@ void rtx_task()
             }
             // stop scanning if the rssi is greater than the current squelch rssi,
             // and listen to that frequency
-            if(radio_getRssi() > (-127 + (state.settings.sqlLevel * 66) / 15))
+            if((-123.0f) > (-127 + (state.settings.sqlLevel * 66) / 15))
             {
                 // turn the speaker on
-                radio_enableAfOutput();
-                rssi = radio_getRssi();
+                //radio_enableAfOutput();
+                //rssi = radio_getRssi();
+							  rssi = -123.0f;
                 while(rssi > (-127 + (state.settings.sqlLevel * 66) / 15))
                 {
                     // allow us to exit the loop if the spectrum has been exited,
@@ -184,7 +189,8 @@ void rtx_task()
                         state.spectrum_data[i] = 0;
                         break;
                     }
-                    rssi = radio_getRssi();
+                    //rssi = radio_getRssi();
+										rssi = -123.0f;
                     height = ((rssi + 160)*log2(22 - (rssi>>1) )) >> 3;
                     state.spectrum_data[i] = height;
                     // give the UI a chance to refresh
@@ -192,7 +198,7 @@ void rtx_task()
                     sleepFor(0, 150);
                 }
                 // turn the speaker off
-                radio_disableAfOutput();
+                //radio_disableAfOutput();
             }
         }
         state.spectrum_shouldRefresh = true;
@@ -219,7 +225,7 @@ void rtx_task()
         if(currMode->getID() != rtxStatus.opMode)
         {
             // Forward opMode change also to radio driver
-            radio_setOpmode(static_cast< enum opmode >(rtxStatus.opMode));
+            //radio_setOpmode(static_cast< enum opmode >(rtxStatus.opMode));
 
             currMode->disable();
             rtxStatus.opStatus = OFF;
@@ -238,7 +244,7 @@ void rtx_task()
         }
 
         // Tell radio driver that there was a change in its configuration.
-        radio_updateConfiguration();
+        //radio_updateConfiguration();
     }
 
     /*
@@ -268,13 +274,14 @@ void rtx_task()
                     * Filter RSSI value using 15.16 fixed point math. Equivalent
                     * floating point code is: rssi = 0.74*radio_getRssi() + 0.26*rssi
                     */
-                    int32_t filt_rssi = radio_getRssi() * 0xBD70    // 0.74 * radio_getRssi
+                    int32_t filt_rssi = -123.0f * 0xBD70    // 0.74 * radio_getRssi
                                     + rssi            * 0x428F;   // 0.26 * rssi
                     rssi = (filt_rssi + 32768) >> 16;               // Round to nearest
                 }
                 else
                 {
-                    rssi = radio_getRssi();
+                    //rssi = radio_getRssi();
+									  rssi = -123.0f;
                     reinitFilter = false;
                 }
             }
@@ -294,12 +301,16 @@ void rtx_task()
     currMode->update(&rtxStatus, reconfigure);
 }
 
+
+
 rssi_t rtx_getRssi()
 {
-    return rssi;
+    //return rssi;
+    return (rssi_t)-73;
 }
 
 bool rtx_rxSquelchOpen()
 {
-    return currMode->rxSquelchOpen();
+    //return currMode->rxSquelchOpen();
+    return 0;
 }

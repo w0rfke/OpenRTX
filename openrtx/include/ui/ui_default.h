@@ -23,11 +23,12 @@
 #include <stdbool.h>
 #include <state.h>
 #include <graphics.h>
-#include <interfaces/keyboard.h>
+#include "keyboard.h"
 #include <stdint.h>
 #include <event.h>
-#include <hwconfig.h>
+//#include <hwconfig.h>
 #include <ui.h>
+#define PLATFORM_A36PLUS
 
 // Maximum menu entry length
 #define MAX_ENTRY_LEN 21

@@ -22,7 +22,7 @@
 
 #include <datetime.h>
 #include <stdint.h>
-#include <minmea.h>
+//#include <minmea.h>
 
 /**
  * Data structure representing a single satellite as part of a GPS fix.

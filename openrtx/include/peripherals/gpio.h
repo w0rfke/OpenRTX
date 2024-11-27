@@ -50,6 +50,9 @@ extern "C" {
  * gpio functional modes.
  * For more details see the documentation of the gpio peripheral.
  */
+ 
+//void gpio_setMode(void *port, const uint8_t pin, const uint16_t mode);
+ 
 enum Mode
 {
     INPUT           = 0, ///< Input, floating

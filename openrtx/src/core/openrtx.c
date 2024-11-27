@@ -18,13 +18,13 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/platform.h>
-#include <interfaces/keyboard.h>
-#include <interfaces/display.h>
-#include <interfaces/delays.h>
-#include <interfaces/cps_io.h>
-#include <peripherals/gps.h>
-#include <voicePrompts.h>
+#include "platform.h"
+#include "keyboard.h"
+#include "display.h"
+#include "delays.h"
+#include "cps_io.h"
+//#include <peripherals/gps.h>
+//#include <voicePrompts.h>
 #include <graphics.h>
 #include <openrtx.h>
 #include <threads.h>
@@ -33,6 +33,7 @@
 #ifdef PLATFORM_LINUX
 #include <stdlib.h>
 #endif
+#include "ST7735S.h"
 
 extern void *main_thread(void *arg);
 
@@ -42,15 +43,15 @@ void openrtx_init()
 
     platform_init();    // Initialize low-level platform drivers
     state_init();       // Initialize radio state
-
     gfx_init();         // Initialize display and graphics driver
+			//display_colorWindow565(0, 0, CONFIG_SCREEN_HEIGHT, CONFIG_SCREEN_WIDTH , 0xF800);
     kbd_init();         // Initialize keyboard driver
     ui_init();          // Initialize user interface
-    vp_init();          // Initialize voice prompts
+    //vp_init();          // Initialize voice prompts
     #ifdef CONFIG_SCREEN_CONTRAST
     display_setContrast(state.settings.contrast);
     #endif
-
+/*
     // Load codeplug from nonvolatile memory, create a new one in case of failure.
     if(cps_open(NULL) < 0)
     {
@@ -66,13 +67,24 @@ void openrtx_init()
             #endif
         }
     }
-
+*/
     // Display splash screen, turn on backlight after a suitable time to
     // hide random pixels during render process
+		
+		//color full screen red, so that we can see the edges for a36plus
+		display_colorWindow565(0, 0, 162, 132 , 0xF800);
+		//draw blue where the screen SHOULD be, if we see blue something is wrong
+		display_colorWindow565(0, 0, 132, 128 , 0x00F8);
     ui_drawSplashScreen();
+/* //debug issue with drawrect
+		color_t red =   {255,   255,   255, 255};
+		point_t pos = {1,1};	
+	  gfx_drawRect(pos, 50, 50, red, false);
+*/		
+		
     gfx_render();
-    sleepFor(0u, 30u);
-    display_setBacklightLevel(state.settings.brightness);
+    //sleepFor(3u, 30u);
+    //display_setBacklightLevel(state.settings.brightness);
     sleepFor(0, 500u);
     gfx_clearScreen();
 
@@ -88,7 +100,7 @@ void *openrtx_run()
     state.devStatus = RUNNING;
 
     // Start the OpenRTX threads
-    create_threads();
+    //create_threads();
 
     // Jump to the device management thread
     main_thread(NULL);

@@ -25,13 +25,14 @@
 #include <event.h>
 #include <state.h>
 #include <battery.h>
-#include <hwconfig.h>
-#include <interfaces/platform.h>
-#include <interfaces/nvmem.h>
-#include <interfaces/delays.h>
+//#include <hwconfig.h>
+#include "platform.h"
+//#include <interfaces/nvmem.h>
+#include "delays.h"
+#include "ST7735S.h"
 
 state_t state;
-pthread_mutex_t state_mutex;
+//pthread_mutex_t state_mutex;
 static long long int lastUpdate = 0;
 
 // Commonly used frequency steps, expressed in Hz
@@ -42,13 +43,14 @@ const size_t n_freq_steps   = sizeof(freq_steps) / sizeof(freq_steps[0]);
 
 void state_init()
 {
-    pthread_mutex_init(&state_mutex, NULL);
+    //pthread_mutex_init(&state_mutex, NULL);
 
     /*
      * Try loading settings from nonvolatile memory and default to sane values
      * in case of failure.
      */
-    if(nvm_readSettings(&state.settings) < 0)
+    //if(nvm_readSettings(&state.settings) < 0)
+	  if (true)
     {
         state.settings = default_settings;
         strncpy(state.settings.callsign, "OPNRTX", 10);
@@ -58,7 +60,8 @@ void state_init()
      * Try loading VFO configuration from nonvolatile memory and default to sane
      * values in case of failure.
      */
-    if(nvm_readVfoChannelData(&state.channel) < 0)
+    //if(nvm_readVfoChannelData(&state.channel) < 0)
+		if (true)
     {
         state.channel = cps_getDefaultChannel();
     }
@@ -99,21 +102,21 @@ void state_terminate()
         state.settings.brightness = 100;
     }
 
-    nvm_writeSettingsAndVfo(&state.settings, &state.channel);
-    pthread_mutex_destroy(&state_mutex);
+    //nvm_writeSettingsAndVfo(&state.settings, &state.channel);
+    //pthread_mutex_destroy(&state_mutex);
 }
 
 void state_task()
 {
     // Update radio state once every 150ms (or faster for spectrum)
-    if(state.rtxStatus != RTX_SPECTRUM && (getTick() - lastUpdate) < 150)
+    if(state.rtxStatus != RTX_SPECTRUM && (HAL_GetTick() - lastUpdate) < 150)
         return;
-    if((getTick() - lastUpdate) < 25)
+    if((HAL_GetTick() - lastUpdate) < 25)
         return;
 
-    lastUpdate = getTick();
+    lastUpdate = HAL_GetTick();
 
-    pthread_mutex_lock(&state_mutex);
+    //pthread_mutex_lock(&state_mutex);
 
     /*
      * Low-pass filtering with a time constant of 10s when updated at 1Hz
@@ -143,7 +146,7 @@ void state_task()
     state.time = platform_getCurrentTime();
     #endif
 
-    pthread_mutex_unlock(&state_mutex);
+    //pthread_mutex_unlock(&state_mutex);
 
     ui_pushEvent(EVENT_STATUS, 0);
 }
@@ -152,5 +155,5 @@ void state_resetSettingsAndVfo()
 {
     state.settings = default_settings;
     state.channel  = cps_getDefaultChannel();
-    nvm_writeSettingsAndVfo(&state.settings, &state.channel);
+    //nvm_writeSettingsAndVfo(&state.settings, &state.channel);
 }

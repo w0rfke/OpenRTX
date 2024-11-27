@@ -23,11 +23,11 @@
 #include <stdbool.h>
 #include <state.h>
 #include <graphics.h>
-#include <interfaces/keyboard.h>
-#include <calibInfo_Mod17.h>
+#include "keyboard.h"
+#include "calibInfo_Mod17.h"
 #include <stdint.h>
 #include <event.h>
-#include <hwconfig.h>
+//#include <hwconfig.h>
 #include <ui.h>
 
 // Maximum menu entry length

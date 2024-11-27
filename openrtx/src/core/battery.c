@@ -18,8 +18,9 @@
  ***************************************************************************/
 
 #include <battery.h>
-#include <hwconfig.h>
+//#include <hwconfig.h>
 #include <math.h>
+#include "ST7735S.h"
 
 /*
  * Minimum and maximum battery voltages expressed in fixed point Q8.8 format.

@@ -22,9 +22,12 @@
  * It is suitable for both color, grayscale and B/W display
  */
 
-#include <interfaces/display.h>
-#include <hwconfig.h>
-#include <graphics.h>
+
+
+#include "display.h"
+#include "ST7735S.h"
+//#include <hwconfig.h>
+#include "graphics.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -54,6 +57,10 @@
 #include <Symbols5pt7b.h>
 #include <Symbols6pt7b.h>
 #include <Symbols8pt7b.h>
+
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+extern UART_HandleTypeDef huart1;
 
 // Variable swap macro
 #define DEG_RAD  0.017453292519943295769236907684886
@@ -157,15 +164,14 @@ static char text[32];
 
 void gfx_init()
 {
-    display_init();
-
+		display_init();
     // Clear text buffer
     memset(text, 0x00, 32);
 }
 
 void gfx_terminate()
 {
-    display_terminate();
+    //display_terminate();
 }
 
 void gfx_renderRows(uint8_t startRow, uint8_t endRow)
@@ -351,25 +357,38 @@ void gfx_drawRect(point_t start, uint16_t width, uint16_t height, color_t color,
 {   
     if(width == 0) return;
     if(height == 0) return;
-    uint16_t x_max = start.x + width - 1;
-    uint16_t y_max = start.y + height - 1;
+    volatile  uint16_t x_max = start.x + width - 1;
+    volatile  uint16_t y_max = start.y + height - 1;
     bool perimeter = 0;
     if(x_max > (CONFIG_SCREEN_WIDTH - 1)) x_max = CONFIG_SCREEN_WIDTH - 1;
     if(y_max > (CONFIG_SCREEN_HEIGHT - 1)) y_max = CONFIG_SCREEN_HEIGHT - 1;
-    for(int16_t y = start.y; y <= y_max; y++)
+	 uint16_t count= 0;
+	    for(int16_t y = start.y; y <= y_max; y++)
     {
         for(int16_t x = start.x; x <= x_max; x++)
         {
-            if(y == start.y || y == y_max || x == start.x || x == x_max) perimeter = 1;
-            else perimeter = 0;
-            // If fill is false, draw only rectangle perimeter
-            if(fill || perimeter)
+            // Direct check for the perimeter: Top, Bottom, Left, Right
+            bool on_perimeter = (y == start.y || y == y_max || x == start.x || x == x_max);
+
+					// Draw the pixel if fill is true, or if we're on the perimeter
+            if(fill || on_perimeter)
             {
                 point_t pos = {x, y};
-                gfx_setPixel(pos, color);
-            }
+                gfx_setPixel(pos, color); // Draw the pixel
+            }					
+					
+            //if(y == start.y || y == y_max || x == start.x || x == x_max) perimeter = 1;
+            //else perimeter = 0;
+            // If fill is false, draw only rectangle perimeter
+            //if(fill || perimeter)
+            //{
+            //    point_t pos = {x, y};
+            //    gfx_setPixel(pos, color);
+						//		count++;
+            //}
         }
     }
+				//char message2[50]; sprintf(message2, "Counter: %u\n\r", count); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
 }
 
 void gfx_drawCircle(point_t start, uint16_t r, color_t color)

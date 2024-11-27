@@ -24,7 +24,7 @@
 #include <datatypes.h>
 #include <stdint.h>
 #include <cps.h>
-#include <pthread.h>
+//#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,7 +112,8 @@ enum opstatus
  * @param m: pointer to the mutex protecting the shared configuration data
  * structure.
  */
-void rtx_init(pthread_mutex_t *m);
+//void rtx_init(pthread_mutex_t *m);
+void rtx_init();
 
 /**
  * Shut down rtx stage

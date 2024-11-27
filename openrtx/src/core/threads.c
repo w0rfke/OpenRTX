@@ -18,15 +18,15 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <hwconfig.h>
-#include <pthread.h>
+//#include <hwconfig.h>
+//#include <pthread.h>
 #include <ui.h>
 #include <state.h>
 #include <threads.h>
 #include <graphics.h>
-#include <interfaces/platform.h>
-#include <interfaces/delays.h>
-#include <interfaces/radio.h>
+#include "platform.h"
+#include "delays.h"
+#include "radio.h"
 #include <event.h>
 #include <rtx.h>
 #include <string.h>
@@ -38,13 +38,20 @@
 #include <gps.h>
 #endif
 #include <voicePrompts.h>
+//#include "openrtx.h"
+#include "ST7735S.h"
+
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+extern UART_HandleTypeDef huart1;
+
 
 #if defined(PLATFORM_TTWRPLUS)
 #include <pmu.h>
 #endif
 
 /* Mutex for concurrent access to RTX state variable */
-pthread_mutex_t rtx_mutex;
+//pthread_mutex_t rtx_mutex;
 
 /**
  * \internal Thread managing user input and UI
@@ -65,28 +72,34 @@ void *ui_threadFunc(void *arg)
     // Keep the splash screen for one second  before rendering the new UI screen
     sleepFor(1u, 0u);
     gfx_render();
-
-    while(state.devStatus != SHUTDOWN)
+		//const char *message; message = "I'm here inside ui loop\r\n"; HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+    //while(state.devStatus != SHUTDOWN)
+		//break out loop to run other 'threads'
+		if (state.devStatus != SHUTDOWN)
     {
-        time = getTick();
+        time = HAL_GetTick();
+
 
         if(input_scanKeyboard(&kbd_msg))
         {
-            ui_pushEvent(EVENT_KBD, kbd_msg.value);
+            //ui_pushEvent(EVENT_KBD, kbd_msg.value);
             //gfx_clearScreen();
         }
 
-        pthread_mutex_lock(&state_mutex);   // Lock r/w access to radio state
-        ui_updateFSM(&sync_rtx);            // Update UI FSM
-        ui_saveState();                     // Save local state copy
-        pthread_mutex_unlock(&state_mutex); // Unlock r/w access to radio state
+			
 
-        vp_tick();                           // continue playing voice prompts in progress if any.
+        //pthread_mutex_lock(&state_mutex);   // Lock r/w access to radio state
+       // ui_updateFSM(&sync_rtx);            // Update UI FSM
+			
+        ui_saveState();                     // Save local state copy
+        //pthread_mutex_unlock(&state_mutex); // Unlock r/w access to radio state
+
+        //vp_tick();                           // continue playing voice prompts in progress if any.
 
         // If synchronization needed take mutex and update RTX configuration
         if(sync_rtx)
         {
-            pthread_mutex_lock(&rtx_mutex);
+            //pthread_mutex_lock(&rtx_mutex);
             rtx_cfg.opMode      = state.channel.mode;
             rtx_cfg.bandwidth   = state.channel.bandwidth;
             rtx_cfg.rxFrequency = state.channel.rx_frequency;
@@ -111,7 +124,7 @@ void *ui_threadFunc(void *arg)
             strncpy(rtx_cfg.source_address,      state.settings.callsign, 10);
             strncpy(rtx_cfg.destination_address, state.settings.m17_dest, 10);
 
-            pthread_mutex_unlock(&rtx_mutex);
+            //pthread_mutex_unlock(&rtx_mutex);
 
             rtx_configure(&rtx_cfg);
             sync_rtx = false;
@@ -130,14 +143,37 @@ void *ui_threadFunc(void *arg)
 
         // 40Hz update rate for keyboard and UI
         time += 25;
-        sleepUntil(time);
+        //sleepUntil(time);
+				
     }
-
-    ui_terminate();
-    gfx_terminate();
+    //ui_terminate();
+    //gfx_terminate();
 
     return NULL;
 }
+
+//Move Up
+/**
+ * \internal Thread for RTX management.
+ */
+void *rtx_threadFunc(void *arg)
+{
+    (void) arg;
+
+    rtx_init();
+
+    //while(state.devStatus == RUNNING)
+	  //no threads, break out loop
+	  if(state.devStatus == RUNNING)
+    {
+        rtx_task();
+    }
+
+    //rtx_terminate();
+
+    return NULL;
+}
+
 
 /**
  * \internal Thread managing the device and update the global state variable.
@@ -147,20 +183,20 @@ void *main_thread(void *arg)
     (void) arg;
 
     long long time     = 0;
-
-    while(state.devStatus != SHUTDOWN)
+	    while(state.devStatus != SHUTDOWN)
     {
-        time = getTick();
+			  time = HAL_GetTick();
 
         #if defined(PLATFORM_TTWRPLUS)
         pmu_handleIRQ();
         #endif
 
         // Check if power off is requested
-        pthread_mutex_lock(&state_mutex);
+        //pthread_mutex_lock(&state_mutex);
         if(platform_pwrButtonStatus() == false)
             state.devStatus = SHUTDOWN;
-        pthread_mutex_unlock(&state_mutex);
+
+        //pthread_mutex_unlock(&state_mutex);
 
         // Run GPS task
         #if defined(CONFIG_GPS) && !defined(MD3x0_ENABLE_DBG)
@@ -170,9 +206,14 @@ void *main_thread(void *arg)
         // Run state update task
         state_task();
 
+
         // Run this loop once every 5ms
         time += 5;
-        sleepUntil(time);
+        //sleepUntil(time);
+				//Since we don't have thread hande all in sequentially?
+				rtx_threadFunc(NULL);
+				ui_threadFunc(NULL);
+				//const char *message; message = "I'm here inside Main loop\r\n"; HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
     }
 
     #if defined(CONFIG_GPS)
@@ -182,65 +223,47 @@ void *main_thread(void *arg)
     return NULL;
 }
 
-/**
- * \internal Thread for RTX management.
- */
-void *rtx_threadFunc(void *arg)
-{
-    (void) arg;
-
-    rtx_init(&rtx_mutex);
-
-    while(state.devStatus == RUNNING)
-    {
-        rtx_task();
-    }
-
-    rtx_terminate();
-
-    return NULL;
-}
 
 /**
  * \internal This function creates all the system tasks and mutexes.
  */
-void create_threads()
-{
-    // Create RTX state mutex
-    pthread_mutex_init(&rtx_mutex, NULL);
-
-    // Create rtx radio thread
-    pthread_attr_t rtx_attr;
-    pthread_attr_init(&rtx_attr);
-
-    #ifndef __ZEPHYR__
-    pthread_attr_setstacksize(&rtx_attr, RTX_TASK_STKSIZE);
-    #else
-    void *rtx_thread_stack = malloc(RTX_TASK_STKSIZE * sizeof(uint8_t));
-    pthread_attr_setstack(&rtx_attr, rtx_thread_stack, RTX_TASK_STKSIZE);
-    #endif
-
-    #ifdef _MIOSIX
-    // Max priority for RTX thread when running with miosix rtos
-    struct sched_param param;
-    param.sched_priority = sched_get_priority_max(0);
-    pthread_attr_setschedparam(&rtx_attr, &param);
-    #endif
-
-    pthread_t rtx_thread;
-    pthread_create(&rtx_thread, &rtx_attr, rtx_threadFunc, NULL);
-
-    // Create UI thread
-    pthread_attr_t ui_attr;
-    pthread_attr_init(&ui_attr);
-
-    #ifndef __ZEPHYR__
-    pthread_attr_setstacksize(&ui_attr, UI_TASK_STKSIZE);
-    #else
-    void *ui_thread_stack = malloc(UI_TASK_STKSIZE * sizeof(uint8_t));
-    pthread_attr_setstack(&ui_attr, ui_thread_stack, UI_TASK_STKSIZE);
-    #endif
-
-    pthread_t ui_thread;
-    pthread_create(&ui_thread, &ui_attr, ui_threadFunc, NULL);
-}
+//void create_threads()
+//{
+//    // Create RTX state mutex
+//    pthread_mutex_init(&rtx_mutex, NULL);
+//
+//    // Create rtx radio thread
+//    pthread_attr_t rtx_attr;
+//    pthread_attr_init(&rtx_attr);
+//
+//    #ifndef __ZEPHYR__
+//    pthread_attr_setstacksize(&rtx_attr, RTX_TASK_STKSIZE);
+//    #else
+//    void *rtx_thread_stack = malloc(RTX_TASK_STKSIZE * sizeof(uint8_t));
+//    pthread_attr_setstack(&rtx_attr, rtx_thread_stack, RTX_TASK_STKSIZE);
+//    #endif
+//
+//    #ifdef _MIOSIX
+//    // Max priority for RTX thread when running with miosix rtos
+//    struct sched_param param;
+//    param.sched_priority = sched_get_priority_max(0);
+//    pthread_attr_setschedparam(&rtx_attr, &param);
+//    #endif
+//
+//    pthread_t rtx_thread;
+//    pthread_create(&rtx_thread, &rtx_attr, rtx_threadFunc, NULL);
+//
+//    // Create UI thread
+//    pthread_attr_t ui_attr;
+//    pthread_attr_init(&ui_attr);
+//
+//    #ifndef __ZEPHYR__
+//    pthread_attr_setstacksize(&ui_attr, UI_TASK_STKSIZE);
+//    #else
+//    void *ui_thread_stack = malloc(UI_TASK_STKSIZE * sizeof(uint8_t));
+//    pthread_attr_setstack(&ui_attr, ui_thread_stack, UI_TASK_STKSIZE);
+//    #endif
+//
+//    pthread_t ui_thread;
+//    pthread_create(&ui_thread, &ui_attr, ui_threadFunc, NULL);
+//}

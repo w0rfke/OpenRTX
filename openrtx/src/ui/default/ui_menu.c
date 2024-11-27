@@ -23,16 +23,18 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <utils.h>
-#include <ui/ui_default.h>
-#include <interfaces/nvmem.h>
-#include <interfaces/cps_io.h>
-#include <interfaces/platform.h>
-#include <interfaces/delays.h>
-#include <interfaces/radio.h>
-#include <memory_profiling.h>
-#include <ui/ui_strings.h>
-#include <core/voicePromptUtils.h>
-#include <lib/printf/printf.h>
+#include "ui_default.h"
+//#include <interfaces/nvmem.h>
+//#include <interfaces/cps_io.h>
+#include "platform.h"
+#include "delays.h"
+//#include <interfaces/radio.h>
+#include "memory_profiling.h"
+#include "ui_strings.h"
+#include "voicePromptUtils.h"
+//#include <lib/printf/printf.h>
+#include "settings.h"
+#include "ST7735S.h"
 
 #ifdef PLATFORM_TTWRPLUS
 #include <SA8x8.h>
@@ -97,7 +99,7 @@ static bool DidSelectedMenuItemChange(char* menuName, char* menuValue)
     if ((menuValue != NULL) && (strcmp(menuValue, priorSelectedMenuValue) != 0))
     {
         // avoid chatter when value changes rapidly!
-    uint32_t now=getTick();
+    uint32_t now=HAL_GetTick();
 
         uint32_t interval=now - lastValueUpdate;
         lastValueUpdate = now;
@@ -140,23 +142,24 @@ static void announceMenuItemIfNeeded(char* name, char* value, bool editMode)
         return;
 
     // Stop any prompt in progress and/or clear the buffer.
-    vp_flush();
+    //vp_flush();
 
-    vp_announceText(name, vpqDefault);
+    //vp_announceText(name, vpqDefault);
 // We determine if we should say the word Menu as follows:
 // The name has no  associated value ,
 // i.e. does not represent a modifyable name/value pair.
 // We're not in edit mode.
 // The screen is navigable but entries  are readonly.
     if (!value && !editMode && !ScreenContainsReadOnlyEntries(state.ui_screen))
-        vp_queueStringTableEntry(&currentLanguage->menu);
+        //vp_queueStringTableEntry(&currentLanguage->menu);
 
     if (editMode)
         vp_queuePrompt(PROMPT_EDIT);
     if ((value != NULL) && (*value != '\0'))
-        vp_announceText(value, vpqDefault);
+        //vp_announceText(value, vpqDefault);
 
-    vp_play();
+    //vp_play();
+		;
 }
 
 void _ui_drawMenuList(uint8_t selected, int (*getCurrentEntry)(char *buf, uint8_t max_len, uint8_t index))
@@ -516,8 +519,8 @@ int _ui_getAccessibilityValueName(char *buf, uint8_t max_len, uint8_t index)
 
 int _ui_getBackupRestoreEntryName(char *buf, uint8_t max_len, uint8_t index)
 {
-    if(index >= backup_restore_num) return -1;
-    sniprintf(buf, max_len, "%s", backup_restore_items[index]);
+    //if(index >= backup_restore_num) return -1;
+    //sniprintf(buf, max_len, "%s", backup_restore_items[index]);
     return 0;
 }
 
@@ -535,7 +538,7 @@ int _ui_getInfoValueName(char *buf, uint8_t max_len, uint8_t index)
     switch(index)
     {
         case 0: // Git Version
-            sniprintf(buf, max_len, "%s", GIT_VERSION);
+            sniprintf(buf, max_len, "%s", "GIT_VERSION");
             break;
         case 1: // Battery voltage
         {
@@ -553,7 +556,7 @@ int _ui_getInfoValueName(char *buf, uint8_t max_len, uint8_t index)
             sniprintf(buf, max_len, "%"PRIi32"dBm", last_state.rssi);
             break;
         case 4: // Heap usage
-            sniprintf(buf, max_len, "%dB", getHeapSize() - getCurrentFreeHeap());
+            //sniprintf(buf, max_len, "%dB", getHeapSize() - getCurrentFreeHeap());
             break;
         case 5: // Band
             sniprintf(buf, max_len, "%s %s", hwinfo->vhf_band ? currentLanguage->VHF : "", hwinfo->uhf_band ? currentLanguage->UHF : "");
@@ -597,7 +600,7 @@ int _ui_getBankName(char *buf, uint8_t max_len, uint8_t index)
     else
     {
         bankHdr_t bank;
-        result = cps_readBankHeader(&bank, index - 1);
+        //result = cps_readBankHeader(&bank, index - 1);
         if(result != -1)
             sniprintf(buf, max_len, "%s", bank.name);
     }
@@ -607,7 +610,7 @@ int _ui_getBankName(char *buf, uint8_t max_len, uint8_t index)
 int _ui_getChannelName(char *buf, uint8_t max_len, uint8_t index)
 {
     channel_t channel;
-    int result = cps_readChannel(&channel, index);
+    int result; // = cps_readChannel(&channel, index);
     if(result != -1)
         sniprintf(buf, max_len, "%s", channel.name);
     return result;
@@ -616,7 +619,7 @@ int _ui_getChannelName(char *buf, uint8_t max_len, uint8_t index)
 int _ui_getContactName(char *buf, uint8_t max_len, uint8_t index)
 {
     contact_t contact;
-    int result = cps_readContact(&contact, index);
+    int result; // = cps_readContact(&contact, index);
     if(result != -1)
         sniprintf(buf, max_len, "%s", contact.name);
     return result;
@@ -1177,10 +1180,10 @@ void _ui_drawSettingsReset2Defaults(ui_state_t* ui_state)
                   layout.horizontal_pad, layout.top_font,
                   TEXT_ALIGN_CENTER, textcolor, currentLanguage->pressEnterTwice);
 
-    if((getTick() - lastDraw) > 1000)
+    if((HAL_GetTick() - lastDraw) > 1000)
     {
         drawcnt++;
-        lastDraw = getTick();
+        lastDraw = HAL_GetTick();
     }
 
     drawcnt++;
