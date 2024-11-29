@@ -70,7 +70,7 @@
 #include "platform.h"
 #include "display.h"
 #include "cps_io.h"
-//#include <interfaces/nvmem.h>
+#include "nvmem.h"
 #include "delays.h"
 #include <string.h>
 #include <battery.h>
@@ -80,6 +80,7 @@
 #include <voicePromptUtils.h>
 //#include <beeps.h>
 #include "ST7735S.h"
+#include "radio.h"
 
 //added for debugging functions
 #include "string.h" //For Huart1 strlen
@@ -325,8 +326,8 @@ static bool standby = false;
 static long long last_event_tick = 0;
 
 // UI event queue
-static uint8_t evQueue_rdPos;
-static uint8_t evQueue_wrPos;
+static volatile uint8_t evQueue_rdPos;
+static volatile uint8_t evQueue_wrPos;
 static event_t evQueue[MAX_NUM_EVENTS];
 
 
@@ -671,6 +672,11 @@ static void _ui_fsm_confirmVFOInput(bool *sync_rtx)
     // Switch to TX input
     if(ui_state.input_set == SET_RX)
     {
+			
+				char *message;
+	message = "set_rx\r\n";
+  HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+			
         ui_state.input_set = SET_TX;
         // Reset input position
         ui_state.input_position = 0;
@@ -679,9 +685,14 @@ static void _ui_fsm_confirmVFOInput(bool *sync_rtx)
         // defer playing till the end.
         // indicate that the user has moved to the tx freq field.
         //vp_announceInputReceiveOrTransmit(true, vpqDefault);
+
     }
     else if(ui_state.input_set == SET_TX)
     {
+			
+				char *message;
+	message = "set_tx\r\n";
+  HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
         // Save new frequency setting
         // If TX frequency was not set, TX = RX
         if(ui_state.new_tx_frequency == 0)
@@ -705,7 +716,9 @@ static void _ui_fsm_confirmVFOInput(bool *sync_rtx)
         {
             //vp_announceError(vpqInit);
         }
-
+	//char *message;
+	message = "MAIN_VFO\r\n";
+  HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
         state.ui_screen = MAIN_VFO;
     }
 
@@ -1419,6 +1432,7 @@ void ui_updateFSM(bool *sync_rtx)
     // drop caused by the RF PA power absorption causes spurious triggers of
     // the low battery alert.
     bool txOngoing = platform_getPttStatus();
+	
 #if !defined(PLATFORM_TTWRPLUS)
     if ((!state.emergency) && (!txOngoing) && (state.charge <= 0))
     {
@@ -1428,7 +1442,7 @@ void ui_updateFSM(bool *sync_rtx)
             state.ui_screen = MAIN_VFO;
             state.emergency = true;
         }
-        return;
+
     }
 #endif // PLATFORM_TTWRPLUS
 
@@ -1440,9 +1454,11 @@ void ui_updateFSM(bool *sync_rtx)
     }
 
     long long now = HAL_GetTick();
+
     // Process pressed keys
     if(event.type == EVENT_KBD)
     {
+			
         kbd_msg_t msg;
         msg.value = event.payload;
         bool f1Handled = false;
@@ -1452,6 +1468,7 @@ void ui_updateFSM(bool *sync_rtx)
         if (msg.keys)
             gfx_clearScreen();
         #endif
+
         // If we get out of standby, we ignore the kdb event
         // unless is the MONI key for the MACRO functions
         if (_ui_exitStandby(now) && !(msg.keys & KEY_MONI))
@@ -1682,6 +1699,12 @@ void ui_updateFSM(bool *sync_rtx)
             case MAIN_VFO_INPUT:
                 if(msg.keys & KEY_ENTER)
                 {
+									
+	char *message;
+	message = "Enter key _ui_fsm_confirmVFOInput\r\n";
+  HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+									
+									
                     _ui_fsm_confirmVFOInput(sync_rtx);
                 }
                 else if(msg.keys & KEY_ESC)
@@ -2024,7 +2047,7 @@ void ui_updateFSM(bool *sync_rtx)
                 }
                 if(msg.keys & KEY_ESC) {
                     state.rtxStatus = RTX_RX;
-                    //radio_enableRx();
+                    radio_enableRx();
                     display_init();
                     _ui_menuBack(MENU_TOP);
                 }
@@ -2033,7 +2056,7 @@ void ui_updateFSM(bool *sync_rtx)
                     spectrum_changeFrequency(freq_steps[state.settings.spectrum_step]/10*32);
                     // Enable corresponding filters
                     #ifndef PLATFORM_LINUX
-                    //radio_setRxFilters(state.spectrum_startFreq);
+                    radio_setRxFilters(state.spectrum_startFreq);
                     #endif
                     state.spectrum_currentPart = 0;
                 }
@@ -2042,7 +2065,7 @@ void ui_updateFSM(bool *sync_rtx)
                     spectrum_changeFrequency(-(freq_steps[state.settings.spectrum_step]/10*32));
                     // Enable corresponding filters
                     #ifndef PLATFORM_LINUX
-                    //radio_setRxFilters(state.spectrum_startFreq);
+                    radio_setRxFilters(state.spectrum_startFreq);
                     #endif
                     state.spectrum_currentPart = 0;
                 }
@@ -2425,7 +2448,7 @@ void ui_updateFSM(bool *sync_rtx)
                                 // Cycle over the available modulations
                                 state.settings.rx_modulation = !state.settings.rx_modulation;
                                 //bk4819_set_modulation(state.settings.rx_modulation); // required for instant feedback
-                                //radio_updateConfiguration();
+                                radio_updateConfiguration();
                             }
                             break;
                         case R_STEP:
@@ -2674,6 +2697,7 @@ void ui_updateFSM(bool *sync_rtx)
         }
 #endif //            CONFIG_GPS
 
+
         if (txOngoing || rtx_rxSquelchOpen())
         {
             _ui_exitStandby(now);
@@ -2704,7 +2728,6 @@ bool ui_updateGUI()
     {
         // VFO main screen
         case MAIN_VFO:
-					return 0;
         #ifdef PLATFORM_A36PLUS
             if(!macro_menu)
                 _ui_drawMainVFO(&ui_state);

@@ -20,11 +20,11 @@
 
 #include <string.h>
 #include <wchar.h>
-#include <interfaces/delays.h>
-#include <interfaces/nvmem.h>
+#include "delays.h"
+#include "nvmem.h"
 #include <calibInfo_A36Plus.h>
 #include <utils.h>
-#include "AT24Cx.h"
+//#include "AT24Cx.h"
 #include "W25Qx.h"
 
 W25Qx_DEVICE_DEFINE(eflash,  0x200000)  // 2 MB,  16 Mbit

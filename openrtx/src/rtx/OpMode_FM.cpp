@@ -90,7 +90,7 @@ void OpMode_FM::disable()
     platform_ledOff(RED);
     //audioPath_release(rxAudioPath);
     //audioPath_release(txAudioPath);
-    //radio_disableRtx();
+    radio_disableRtx();
     rfSqlOpen = false;
     sqlOpen   = false;
     enterRx   = false;
@@ -120,8 +120,7 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
 
         // Local flags for current RF and tone squelch status
         bool rfSql   = ((status->rxToneEn == 0) && (rfSqlOpen == true));
-        //bool toneSql = ((status->rxToneEn == 1) && radio_checkRxDigitalSquelch());
-			  bool toneSql = ((status->rxToneEn == 1) && false);
+        bool toneSql = ((status->rxToneEn == 1) && radio_checkRxDigitalSquelch());
 
         // Audio control
         if((sqlOpen == false) && (rfSql || toneSql))
@@ -138,9 +137,9 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
     }
     else if((status->opStatus == OFF) && enterRx)
     {
-        //radio_disableRtx();
+        radio_disableRtx();
 
-        //radio_enableRx();
+        radio_enableRx();
         status->opStatus = RX;
         enterRx = false;
     }
@@ -150,10 +149,10 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
                                   (status->txDisable == 0))
     {
         //audioPath_release(rxAudioPath);
-        //radio_disableRtx();
+        radio_disableRtx();
 
         //txAudioPath = audioPath_request(SOURCE_MIC, SINK_RTX, PRIO_TX);
-        //radio_enableTx();
+        radio_enableTx();
 
         status->opStatus = TX;
     }
@@ -161,21 +160,20 @@ void OpMode_FM::update(rtxStatus_t *const status, const bool newCfg)
     if(!platform_getPttStatus() && (status->opStatus == TX))
     {
         //audioPath_release(txAudioPath);
-        //radio_disableRtx();
+        radio_disableRtx();
 
         status->opStatus = OFF;
         enterRx = true;
         sqlOpen = false;  // Force squelch to be redetected.
     }
     if (status->voxEn)
-        //radio_checkVOX();   
+        radio_checkVOX();   
 
     // Led control logic
     switch(status->opStatus)
     {
         case RX:
-//            if(radio_checkRxDigitalSquelch())
-						if(false)
+            if(radio_checkRxDigitalSquelch())
             {
                 platform_ledOn(GREEN);  // Red + green LEDs ("orange"): tone squelch open
                 platform_ledOn(RED);

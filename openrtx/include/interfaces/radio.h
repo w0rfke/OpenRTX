@@ -23,7 +23,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <rtx.h>
+
+#define PLATFORM_A36PLUS
 
 #ifdef __cplusplus
 extern "C" {

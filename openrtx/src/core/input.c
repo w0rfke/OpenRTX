@@ -23,6 +23,11 @@
 #include <input.h>
 #include "ST7735S.h"
 
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+#include <stdio.h>
+extern UART_HandleTypeDef huart1;
+
 static long long  keyTs[KBD_NUM_KEYS];  // Timestamp of each keypress
 static uint32_t   longPressSent;        // Flags to manage long-press events
 static keyboard_t prevKeys = 0;         // Previous keyboard status

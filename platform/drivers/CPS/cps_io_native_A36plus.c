@@ -18,8 +18,8 @@
  *   along with this program; if not, see <http://www.gnu.org/licenses/>   *
  ***************************************************************************/
 
-#include <interfaces/cps_io.h>
-#include <interfaces/delays.h>
+#include "cps_io.h"
+#include "delays.h"
 #include <string.h>
 #include <wchar.h>
 #include <utils.h>

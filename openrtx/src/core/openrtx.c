@@ -35,6 +35,11 @@
 #endif
 #include "ST7735S.h"
 
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+#include <stdio.h>
+extern UART_HandleTypeDef huart1;
+
 extern void *main_thread(void *arg);
 
 void openrtx_init()
@@ -51,7 +56,7 @@ void openrtx_init()
     #ifdef CONFIG_SCREEN_CONTRAST
     display_setContrast(state.settings.contrast);
     #endif
-/*
+
     // Load codeplug from nonvolatile memory, create a new one in case of failure.
     if(cps_open(NULL) < 0)
     {
@@ -67,7 +72,7 @@ void openrtx_init()
             #endif
         }
     }
-*/
+
     // Display splash screen, turn on backlight after a suitable time to
     // hide random pixels during render process
 		

@@ -39,7 +39,7 @@
 //#define AIN_VBAT GPIOA, 1
 
 // Push-to-talk
-#define PTT_SW GPIOA, 10
+#define PTT_SW GPIOA, 12
 
 // Keyboard and side keys
 #define KBD_K0 GPIOD, 8
@@ -52,30 +52,31 @@
 #define KBD_DB1 GPIOD, 15
 
 // External flash
-//#define FLASH_SDI GPIOA, 7
-//#define FLASH_SDO GPIOA, 6
-//#define FLASH_CLK GPIOA, 5
-//#define FLASH_CS GPIOA, 4
+#define FLASH_SDI GPIOC, 2
+#define FLASH_SDO GPIOC, 3
+#define FLASH_CLK GPIOB, 10
+#define FLASH_CS GPIOC, 1
 
 // BK1080
-//#define BK1080_CLK GPIOF, 6
-//#define BK1080_DAT GPIOA, 3  // Shared with external flash SCK
-//#define BK1080_EN GPIOA, 8
+#define BK1080_CLK GPIOC, 8
+#define BK1080_DAT GPIOB, 10  // Shared with external flash_SCK
+#define BK1080_EN GPIOC, 9
 
 // BK4819
-//#define BK4819_CLK GPIOA, 2
-//#define BK4819_DAT GPIOA, 3
-//#define BK4819_CS GPIOC, 13
+
+#define BK4819_CLK GPIOB, 10
+#define BK4819_DAT GPIOC, 12
+#define BK4819_CS GPIOC, 11
 
 // Audio control
-//#define MIC_SPK_EN GPIOA, 12
+#define MIC_SPK_EN GPIOA, 11
 
 // RF stage
-//#define RF_AM_AGC GPIOB, 1
-//#define RFV3R_EN GPIOB, 0
-//
-//#define RFV3T_EN GPIOC, 15
-//#define RFU3R_EN GPIOC, 14
+#define RF_AM_AGC GPIOA, 8
+#define RFV3R_EN GPIOC, 13
+
+#define RFV3T_EN GPIOC, 15
+#define RFU3R_EN GPIOC, 14
 //
 //// Power button
 #define PWR_SW GPIOB,0

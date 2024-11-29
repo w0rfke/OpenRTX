@@ -23,19 +23,28 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <hwconfig.h>
-#include <peripherals/gpio.h>
-#include <interfaces/delays.h>
+//#include <hwconfig.h>
+#include "gpio.h"
+#include "gpio-native.h"
+#include "delays.h"
+#include "ST7735S.h"
+#include "pinmap.h"
 
-#define CMD_WRITE 0x02   /* Read data              */
-#define CMD_READ  0x03   /* Read data              */
-#define CMD_RDSTA 0x05   /* Read status register   */
-#define CMD_WREN  0x06   /* Write enable           */
-#define CMD_ESECT 0x20   /* Erase 4kB sector       */
-#define CMD_RSECR 0x48   /* Read security register */
-#define CMD_WKUP  0xAB   /* Release power down     */
-#define CMD_PDWN  0xB9   /* Power down             */
-#define CMD_ECHIP 0xC7   /* Full chip erase        */
+//added for debugging functions
+#include "string.h" //For Huart1 strlen
+extern UART_HandleTypeDef huart1;
+
+
+//modified for M45PE
+#define CMD_WRITE 0x02   /* Write data           PP?   */
+#define CMD_READ  0x03   /* Read data            READ  */
+#define CMD_RDSTA 0x05   /* Read status register RDSR  */
+#define CMD_WREN  0x06   /* Write enable         WREN  */
+#define CMD_ESECT 0xD8   /* Erase 4kB sector     SE    */
+//#define CMD_RSECR 0x48   /* Read security register */
+#define CMD_WKUP  0xAB   /* Release power down    RDP  */
+#define CMD_PDWN  0xB9   /* Power down            DP   */
+//#define CMD_ECHIP 0xC7   /* Full chip erase          */
 
 /*
  * Target-specific SPI interface functions, their implementation can be found
@@ -113,36 +122,36 @@ void W25Qx_sleep()
     gpio_setPin(FLASH_CS);
 }
 
-ssize_t W25Qx_readSecurityRegister(uint32_t addr, void* buf, size_t len)
-{
-    uint32_t addrBase  = addr & 0x3000;
-    uint32_t addrRange = addr & 0xCFFF;
-    if((addrBase < 0x1000) || (addrBase > 0x3000)) return -1; /* Out of base  */
-    if(addrRange > 0xFF) return -1;                           /* Out of range */
-
-    /* Keep 256-byte boundary to avoid wrap-around when reading */
-    size_t readLen = len;
-    if((addrRange + len) > 0xFF)
-    {
-        readLen = 0xFF - (addrRange & 0xFF);
-    }
-
-    gpio_clearPin(FLASH_CS);
-    spiFlash_SendRecv(CMD_RSECR);            /* Command        */
-    spiFlash_SendRecv((addr >> 16) & 0xFF);  /* Address high   */
-    spiFlash_SendRecv((addr >> 8) & 0xFF);   /* Address middle */
-    spiFlash_SendRecv(addr & 0xFF);          /* Address low    */
-    spiFlash_SendRecv(0x00);                 /* Dummy byte     */
-
-    for(size_t i = 0; i < readLen; i++)
-    {
-        ((uint8_t *) buf)[i] = spiFlash_SendRecv(0x00);
-    }
-
-    gpio_setPin(FLASH_CS);
-
-    return ((ssize_t) readLen);
-}
+//ssize_t W25Qx_readSecurityRegister(uint32_t addr, void* buf, size_t len)
+//{
+//    uint32_t addrBase  = addr & 0x3000;
+//    uint32_t addrRange = addr & 0xCFFF;
+//    if((addrBase < 0x1000) || (addrBase > 0x3000)) return -1; /* Out of base  */
+//    if(addrRange > 0xFF) return -1;                           /* Out of range */
+//
+//    /* Keep 256-byte boundary to avoid wrap-around when reading */
+//    size_t readLen = len;
+//    if((addrRange + len) > 0xFF)
+//    {
+//        readLen = 0xFF - (addrRange & 0xFF);
+//    }
+//
+//    gpio_clearPin(FLASH_CS);
+//    spiFlash_SendRecv(CMD_RSECR);            /* Command        */
+//    spiFlash_SendRecv((addr >> 16) & 0xFF);  /* Address high   */
+//    spiFlash_SendRecv((addr >> 8) & 0xFF);   /* Address middle */
+//    spiFlash_SendRecv(addr & 0xFF);          /* Address low    */
+//    spiFlash_SendRecv(0x00);                 /* Dummy byte     */
+//
+//    for(size_t i = 0; i < readLen; i++)
+//    {
+//        ((uint8_t *) buf)[i] = spiFlash_SendRecv(0x00);
+//    }
+//
+//    gpio_setPin(FLASH_CS);
+//
+//    return ((ssize_t) readLen);
+//}
 
 int W25Qx_readData(uint32_t addr, void* buf, size_t len)
 {
@@ -195,27 +204,28 @@ int W25Qx_erase(uint32_t addr, size_t size)
     return ret;
 }
 
-bool W25Qx_eraseChip()
-{
-    gpio_clearPin(FLASH_CS);
-    spiFlash_SendRecv(CMD_WREN);
-    gpio_setPin(FLASH_CS);
 
-    delayUs(5);
-
-    gpio_clearPin(FLASH_CS);
-    spiFlash_SendRecv(CMD_ECHIP);
-    gpio_setPin(FLASH_CS);
-
-    /*
-     * Wait until erase terminates, timeout after 200s.
-     */
-    int ret = waitUntilReady(200000);
-    if(ret == 0)
-        return true;
-
-    return false;
-}
+//bool W25Qx_eraseChip()
+//{
+//    gpio_clearPin(FLASH_CS);
+//    spiFlash_SendRecv(CMD_WREN);
+//    gpio_setPin(FLASH_CS);
+//
+//    delayUs(5);
+//
+//    gpio_clearPin(FLASH_CS);
+//    spiFlash_SendRecv(CMD_ECHIP);
+//    gpio_setPin(FLASH_CS);
+//
+//    /*
+//     * Wait until erase terminates, timeout after 200s.
+//     */
+//    int ret = waitUntilReady(200000);
+//    if(ret == 0)
+//        return true;
+//
+//    return false;
+//}
 
 ssize_t W25Qx_writePage(uint32_t addr, const void* buf, size_t len)
 {
@@ -279,12 +289,12 @@ int W25Qx_writeData(uint32_t addr, const void *buf, size_t len)
     return 0;
 }
 
-static int nvm_api_readSecReg(const struct nvmDevice *dev, uint32_t offset, void *data, size_t len)
-{
-    (void) dev;
-
-    return W25Qx_readSecurityRegister(offset, data, len);
-}
+//static int nvm_api_readSecReg(const struct nvmDevice *dev, uint32_t offset, void *data, size_t len)
+//{
+//    (void) dev;
+//
+//    return W25Qx_readSecurityRegister(offset, data, len);
+//}
 
 static int nvm_api_read(const struct nvmDevice *dev, uint32_t offset, void *data, size_t len)
 {
@@ -315,13 +325,13 @@ const struct nvmOps W25Qx_ops =
     .sync   = NULL,
 };
 
-const struct nvmOps W25Qx_secReg_ops =
-{
-    .read   = nvm_api_readSecReg,
-    .write  = NULL,
-    .erase  = NULL,
-    .sync   = NULL,
-};
+//const struct nvmOps W25Qx_secReg_ops =
+//{
+//    .read   = nvm_api_readSecReg,
+//    .write  = NULL,
+//    .erase  = NULL,
+//    .sync   = NULL,
+//};
 
 const struct nvmInfo W25Qx_info =
 {

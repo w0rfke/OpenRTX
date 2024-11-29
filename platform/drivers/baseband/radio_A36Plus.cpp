@@ -20,13 +20,12 @@
  ***************************************************************************/
 
 #include <calibInfo_A36Plus.h>
-#include <interfaces/nvmem.h>
-#include <drivers/USART0.h>
-#include <gd32f3x0.h>
-#include <hwconfig.h>
-#include <interfaces/nvmem.h>
-#include <interfaces/radio.h>
-#include <peripherals/gpio.h>
+#include "nvmem.h"
+//#include <drivers/USART0.h>
+//#include <gd32f3x0.h>
+//#include <hwconfig.h>
+#include "radio.h"
+#include "gpio.h"
 #include <utils.h>
 
 #include <algorithm>
@@ -35,6 +34,7 @@
 #include "bk4819.h"
 #include "bk1080.h"
 #include "radioUtils.h"
+#include "pinmap.h"
 
 static const rtxStatus_t*
     config;  // Pointer to data structure with radio configuration
@@ -81,10 +81,10 @@ void radio_init(const rtxStatus_t* rtxState)
     /*
      * Configure RTX GPIOs
      */
-    rcu_periph_clock_enable(RCU_GPIOA);
-    rcu_periph_clock_enable(RCU_GPIOB);
-    rcu_periph_clock_enable(RCU_GPIOC);
-    rcu_periph_clock_enable(RCU_GPIOF);
+//    rcu_periph_clock_enable(RCU_GPIOA);
+//    rcu_periph_clock_enable(RCU_GPIOB);
+//    rcu_periph_clock_enable(RCU_GPIOC);
+//    rcu_periph_clock_enable(RCU_GPIOF);
 
 
     gpio_setMode(BK4819_CLK, OUTPUT);
@@ -103,8 +103,8 @@ void radio_init(const rtxStatus_t* rtxState)
 
 
     // gpio_clearPin(BK1080_EN);
-    bk4819_init();
-    BK4819_SetAF(0);
+    //bk4819_init();
+    //BK4819_SetAF(0);
     
     //bk4819_enable_freq_scan(BK4819_SCAN_FRE_TIME_2);
     // bk4819_enable_vox(0, 0x10, 0x30, 0x30);
@@ -116,7 +116,7 @@ void radio_terminate()
 
 void radio_setBandwidth(const uint8_t bandwidth)
 {
-    bk4819_SetFilterBandwidth(bandwidth);
+    //bk4819_SetFilterBandwidth(bandwidth);
 }
 
 void radio_tuneVcxo(const int16_t vhfOffset, const int16_t uhfOffset)
@@ -132,29 +132,31 @@ void radio_setOpmode(const enum opmode mode)
 
 bool radio_checkRxDigitalSquelch()
 {
-    return bk4819_get_ctcss();
+    //return bk4819_get_ctcss();
+		return 0;
 }
 
 void radio_enableAfOutput()
 {
-    bk4819_set_modulation(config->modulation);
+    //bk4819_set_modulation(config->modulation);
 }
 
 void radio_disableAfOutput()
 {
-    BK4819_SetAF(0);
+    //BK4819_SetAF(0);
 }
 
 void radio_checkVOX(){
     return;
     radio_disableRtx();
-    if (bk4819_get_vox()){
-        if (radioStatus != TX)
-            radio_enableTx();
-    }else{
+
+//    if (bk4819_get_vox()){
+//        if (radioStatus != TX)
+//            radio_enableTx();
+//    }else{
         if (radioStatus != RX)
         radio_enableRx();
-    }
+//    }
 }
 
 void radio_setRxFilters(uint32_t freq)
@@ -179,13 +181,13 @@ void radio_enableRx()
     gpio_setPin(MIC_SPK_EN);
     // Disable power amplifiers
     gpio_clearPin(RFV3T_EN);
-    bk4819_gpio_pin_set(4, false);          
+    //bk4819_gpio_pin_set(4, false);          
     radio_setRxFilters(config->rxFrequency / 10);
-    bk4819_set_freq(config->rxFrequency / 10);
+    //bk4819_set_freq(config->rxFrequency / 10);
     if (config->rxToneEn){
-        bk4819_enable_rx_ctcss(config->rxTone / 10);
+        //bk4819_enable_rx_ctcss(config->rxTone / 10);
     }
-    bk4819_rx_on();
+    //bk4819_rx_on();
     radioStatus = RX;
 }
 
@@ -196,10 +198,10 @@ void radio_enableTx()
     // TODO: do this better
     if (config->txFrequency < 136000000 || config->txFrequency > 600000000)
         return;
-    bk4819_set_freq(config->txFrequency / 10);
+    //bk4819_set_freq(config->txFrequency / 10);
     //bk4819_enable_tx_cdcss(1, 0, cdcss_compose(492));
     if (config->txToneEn){
-        bk4819_enable_tx_ctcss(config->txTone / 10);
+        //bk4819_enable_tx_ctcss(config->txTone / 10);
     }
     // Enable corresponding filter
     // If frequency is VHF, toggle GPIO C15
@@ -207,10 +209,10 @@ void radio_enableTx()
     if (config->txFrequency < 174000000){
         gpio_setPin(RFV3T_EN);
     }else{
-        bk4819_gpio_pin_set(4, true);
+        //bk4819_gpio_pin_set(4, true);
     }
 
-    bk4819_tx_on();
+    //bk4819_tx_on();
     radioStatus = TX;
 }
 
@@ -220,7 +222,7 @@ void radio_disableRtx()
     if (config->txFrequency < 174000000){
         gpio_clearPin(RFV3T_EN);
     }else{
-        bk4819_gpio_pin_set(4, false);
+        //bk4819_gpio_pin_set(4, false);
     }
     radioStatus = OFF;
 }
@@ -234,13 +236,13 @@ void radio_updateConfiguration()
     //     config->txDisable = 0;
     // Set squelch
     int squelch = -127 + (config->sqlLevel * 66) / 15;
-    bk4819_set_Squelch(((squelch + 160) * 2),
-                        ((squelch - 3 + 160) * 2),
-                         0x5f, 0x5e, 0x20, 0x08
-                      );
+    //bk4819_set_Squelch(((squelch + 160) * 2),
+    //                    ((squelch - 3 + 160) * 2),
+    //                     0x5f, 0x5e, 0x20, 0x08
+    //                  );
     // Set BK4819 PA Gain tuning according to TX power and frequency
-    bk4819_setTxPower(config->txPower, config->txFrequency, calData);
-    bk4819_set_freq(config->rxFrequency / 10);
+    //bk4819_setTxPower(config->txPower, config->txFrequency, calData);
+    //bk4819_set_freq(config->rxFrequency / 10);
 
     if (radioStatus == RX){
         radio_setRxFilters(config->rxFrequency / 10);
@@ -250,7 +252,9 @@ void radio_updateConfiguration()
 
 rssi_t radio_getRssi()
 {
-    return bk4819_get_rssi();   
+    //return bk4819_get_rssi();   
+		//return random?
+	  return -73;
 }
 
 enum opstatus radio_getStatus()

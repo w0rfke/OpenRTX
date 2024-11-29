@@ -25,10 +25,12 @@
 #include <cps.h>
 #include <settings.h>
 #include "platform.h"
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /**
  * Enumeration field for nonvolatile memory device type.

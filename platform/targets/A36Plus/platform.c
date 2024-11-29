@@ -27,6 +27,7 @@
 #include "ST7735S.h"
 #include "stm32f4xx_ll_gpio.h"  // STM32 Low-Level GPIO functions
 #include "stm32f401xe.h" // STM32F4xx definitions
+#include "nvmem.h"
 
 //#include <platform/drivers/baseband/bk4819.h>
 //#include <hwconfig.h>
@@ -92,7 +93,7 @@ void platform_init()
     gpio_setMode(PTT_SW,    INPUT_PULL_UP);
 //    spi_config();
 //    backlight_init();
-//    nvm_init();         // Initialize nonvolatile memory
+    nvm_init();         // Initialize nonvolatile memory
 //    //rtc_initialize();   // Initialize the RTC peripheral
 //    gpio_setMode(AIN_VBAT, ANALOG);
 //    adc0_init();

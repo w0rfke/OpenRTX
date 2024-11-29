@@ -23,8 +23,18 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <sys/types.h>
-#include <interfaces/nvmem.h>
+//#include "types.h"
+#include "nvmem.h"
+#include <stddef.h>
+
+#define EIO 5  // This is a common value for EIO in Unix-based systems
+
+#ifndef _SSIZE_T_DECLARED
+typedef __SIZE_TYPE__ _ssize_t;
+//typedef __SIZE_TYPE__ size_t;
+typedef _ssize_t ssize_t;
+#define	_SSIZE_T_DECLARED
+#endif
 
 /**
  * Driver for Winbond W25Qx family of SPI flash devices, used as external non

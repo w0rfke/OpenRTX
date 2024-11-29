@@ -1,8 +1,8 @@
 #ifndef __BK1080_JAMIEXU_H__
 #define __BK1080_JAMIEXU_H__
 #include "gpio.h"
-#include "interfaces/delays.h"
-#include "peripherals/gpio.h"
+#include "delays.h"
+#include "gpio.h"
 
 #ifdef __cplusplus
 extern "C" {

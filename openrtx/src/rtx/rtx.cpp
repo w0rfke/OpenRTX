@@ -28,6 +28,7 @@
 #ifdef PLATFORM_A36PLUS
 //#include <platform/drivers/baseband/bk4819.h>
 #endif
+#include "radio.h"
 
 extern state_t state;
 //static pthread_mutex_t   *cfgMutex;     // Mutex for incoming config messages
@@ -176,8 +177,8 @@ void rtx_task()
             if((-123.0f) > (-127 + (state.settings.sqlLevel * 66) / 15))
             {
                 // turn the speaker on
-                //radio_enableAfOutput();
-                //rssi = radio_getRssi();
+                radio_enableAfOutput();
+                rssi = radio_getRssi();
 							  rssi = -123.0f;
                 while(rssi > (-127 + (state.settings.sqlLevel * 66) / 15))
                 {
@@ -198,7 +199,7 @@ void rtx_task()
                     sleepFor(0, 150);
                 }
                 // turn the speaker off
-                //radio_disableAfOutput();
+                radio_disableAfOutput();
             }
         }
         state.spectrum_shouldRefresh = true;
@@ -225,7 +226,7 @@ void rtx_task()
         if(currMode->getID() != rtxStatus.opMode)
         {
             // Forward opMode change also to radio driver
-            //radio_setOpmode(static_cast< enum opmode >(rtxStatus.opMode));
+            radio_setOpmode(static_cast< enum opmode >(rtxStatus.opMode));
 
             currMode->disable();
             rtxStatus.opStatus = OFF;
@@ -244,7 +245,7 @@ void rtx_task()
         }
 
         // Tell radio driver that there was a change in its configuration.
-        //radio_updateConfiguration();
+        radio_updateConfiguration();
     }
 
     /*

@@ -24,8 +24,8 @@
 #include <inttypes.h>
 #include <utils.h>
 #include "ui_default.h"
-//#include <interfaces/nvmem.h>
-//#include <interfaces/cps_io.h>
+#include "nvmem.h"
+#include "cps_io.h"
 #include "platform.h"
 #include "delays.h"
 //#include <interfaces/radio.h>
@@ -519,8 +519,8 @@ int _ui_getAccessibilityValueName(char *buf, uint8_t max_len, uint8_t index)
 
 int _ui_getBackupRestoreEntryName(char *buf, uint8_t max_len, uint8_t index)
 {
-    //if(index >= backup_restore_num) return -1;
-    //sniprintf(buf, max_len, "%s", backup_restore_items[index]);
+    if(index >= backup_restore_num) return -1;
+    sniprintf(buf, max_len, "%s", backup_restore_items[index]);
     return 0;
 }
 
@@ -600,7 +600,7 @@ int _ui_getBankName(char *buf, uint8_t max_len, uint8_t index)
     else
     {
         bankHdr_t bank;
-        //result = cps_readBankHeader(&bank, index - 1);
+        result = cps_readBankHeader(&bank, index - 1);
         if(result != -1)
             sniprintf(buf, max_len, "%s", bank.name);
     }
@@ -610,7 +610,7 @@ int _ui_getBankName(char *buf, uint8_t max_len, uint8_t index)
 int _ui_getChannelName(char *buf, uint8_t max_len, uint8_t index)
 {
     channel_t channel;
-    int result; // = cps_readChannel(&channel, index);
+    int result = cps_readChannel(&channel, index);
     if(result != -1)
         sniprintf(buf, max_len, "%s", channel.name);
     return result;
@@ -619,7 +619,7 @@ int _ui_getChannelName(char *buf, uint8_t max_len, uint8_t index)
 int _ui_getContactName(char *buf, uint8_t max_len, uint8_t index)
 {
     contact_t contact;
-    int result; // = cps_readContact(&contact, index);
+    int result = cps_readContact(&contact, index);
     if(result != -1)
         sniprintf(buf, max_len, "%s", contact.name);
     return result;

@@ -3,8 +3,13 @@
 
 
 #include "gpio.h"
-#include "peripherals/gpio.h"
+#include "gpio.h"
 #include <calibInfo_A36Plus.h>
+
+#ifndef	BIT
+#define BIT(x)                       ((uint32_t)((uint32_t)0x01U<<(x)))
+#endif
+
 // Written by Jamiexu
 #ifdef __cplusplus
 extern "C" {

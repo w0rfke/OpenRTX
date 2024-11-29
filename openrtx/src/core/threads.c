@@ -43,7 +43,11 @@
 
 //added for debugging functions
 #include "string.h" //For Huart1 strlen
+#include <stdio.h>
 extern UART_HandleTypeDef huart1;
+
+bool ui_threadFunc_start = 0;
+bool rtx_threadFunc_start = 0;
 
 
 #if defined(PLATFORM_TTWRPLUS)
@@ -59,37 +63,41 @@ extern UART_HandleTypeDef huart1;
 void *ui_threadFunc(void *arg)
 {
     (void) arg;
-
     kbd_msg_t   kbd_msg;
     rtxStatus_t rtx_cfg = { 0 };
     bool        sync_rtx = true;
     long long   time     = 0;
 
-    // Load initial state and update the UI
-    ui_saveState();
-    ui_updateGUI();
+		if (ui_threadFunc_start == 0) {
+			// Load initial state and update the UI
+			ui_saveState();
+			ui_updateGUI();
 
-    // Keep the splash screen for one second  before rendering the new UI screen
-    sleepFor(1u, 0u);
-    gfx_render();
+			// Keep the splash screen for one second  before rendering the new UI screen
+			sleepFor(1u, 0u);
+			gfx_render();
+			ui_threadFunc_start = 1;
+		}
 		//const char *message; message = "I'm here inside ui loop\r\n"; HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
     //while(state.devStatus != SHUTDOWN)
 		//break out loop to run other 'threads'
+
 		if (state.devStatus != SHUTDOWN)
     {
         time = HAL_GetTick();
-
-
         if(input_scanKeyboard(&kbd_msg))
         {
-            //ui_pushEvent(EVENT_KBD, kbd_msg.value);
+  			//char message2[50];
+				//sprintf(message2, "kbd_msg.value: %u\n\r", kbd_msg.value); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);					
+					
+            ui_pushEvent(EVENT_KBD, kbd_msg.value);
             //gfx_clearScreen();
         }
 
 			
 
         //pthread_mutex_lock(&state_mutex);   // Lock r/w access to radio state
-       // ui_updateFSM(&sync_rtx);            // Update UI FSM
+        ui_updateFSM(&sync_rtx);            // Update UI FSM
 			
         ui_saveState();                     // Save local state copy
         //pthread_mutex_unlock(&state_mutex); // Unlock r/w access to radio state
@@ -160,7 +168,10 @@ void *rtx_threadFunc(void *arg)
 {
     (void) arg;
 
-    rtx_init();
+		if (rtx_threadFunc_start == 0) {
+			rtx_init();
+			rtx_threadFunc_start = 1;
+		}
 
     //while(state.devStatus == RUNNING)
 	  //no threads, break out loop
