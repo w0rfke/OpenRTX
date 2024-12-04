@@ -154,7 +154,7 @@ static void announceMenuItemIfNeeded(char* name, char* value, bool editMode)
         //vp_queueStringTableEntry(&currentLanguage->menu);
 
     if (editMode)
-        vp_queuePrompt(PROMPT_EDIT);
+        //vp_queuePrompt(PROMPT_EDIT);
     if ((value != NULL) && (*value != '\0'))
         //vp_announceText(value, vpqDefault);
 

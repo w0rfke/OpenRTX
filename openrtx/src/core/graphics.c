@@ -93,6 +93,16 @@ static const GFXfont fonts[] = { TomThumb,            // 5pt
                                  Symbols8pt7b       // 8pt
                                };
 
+const uint8_t font_sizes[] = {
+    5,  // FONT_SIZE_5PT
+    6,  // FONT_SIZE_6PT
+    8,  // FONT_SIZE_8PT
+    9,  // FONT_SIZE_9PT
+    10, // FONT_SIZE_10PT
+    12, // FONT_SIZE_12PT
+    16  // FONT_SIZE_16PT
+};
+															 
 #ifdef CONFIG_PIX_FMT_RGB565
 
 /* This specialization is meant for an RGB565 little endian pixel format.
@@ -353,43 +363,115 @@ void gfx_drawLine(point_t start, point_t end, color_t color)
     }
 }
 
+
+//same as gfx_drawRect2, but we need to specify fill_color, which can be the same as color to behave like gfx_drawRect
+void gfx_drawRect2(point_t start, int16_t width, int16_t height, color_t color, bool fill, color_t fill_color)
+{   
+    if (width == 0) return;
+    if (height == 0) return;
+
+    // Handle negative width
+    volatile int16_t x_max = start.x;  // Set x_max to the start.x initially
+    if (width < 0) {
+        start.x += width+1;   // Move the starting point left by width
+    } else {
+        x_max += width - 1;  // Move the ending point right by width
+    }
+
+    // Handle negative height
+    volatile int16_t y_max = start.y;  // Set y_max to the start.y initially
+    if (height < 0) {
+        start.y += height+1;    // Move the starting point up by height
+    } else {
+        y_max += height - 1;  // Move the ending point down by height
+    }
+
+    // Clamp start and max values to screen boundaries
+    if (start.x < 0) start.x = 0;
+    if (start.y < 0) start.y = 0;
+    if (x_max > CONFIG_SCREEN_WIDTH-1) x_max = CONFIG_SCREEN_WIDTH - 1;
+    if (y_max >= CONFIG_SCREEN_HEIGHT-1) y_max = CONFIG_SCREEN_HEIGHT - 1;
+
+    char message2[50];
+		//sprintf(message2, "start.x: %u\n\r", state.devStatus); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+		
+    // Loop over the rectangle area directly from start to max
+    for (int16_t y = start.y; y <= y_max; y++) {
+        for (int16_t x = start.x; x <= x_max; x++) {
+            bool on_perimeter = (y == start.y || y == y_max || x == start.x || x == x_max);
+
+            if (on_perimeter) {
+                point_t pos = {x, y};
+                gfx_setPixel(pos, color);  // Draw the pixel
+            }
+						else if(fill)
+            {
+                point_t pos = {x, y};
+                gfx_setPixel(pos, fill_color); // Draw the pixel
+            }	
+        }
+    }
+}
+/* Previous Version
+void gfx_drawRect2(point_t start, uint16_t width, uint16_t height, color_t color, bool fill, color_t fill_color)
+{   
+    if (width == 0) return;
+    if (height == 0) return;
+
+    volatile uint16_t x_max = start.x + width - 1; // Optimization -O3 does not work without volatile
+    volatile uint16_t y_max = start.y + height - 1;
+
+    if (x_max > (CONFIG_SCREEN_WIDTH - 1)) x_max = CONFIG_SCREEN_WIDTH - 1;
+    if (y_max > (CONFIG_SCREEN_HEIGHT - 1)) y_max = CONFIG_SCREEN_HEIGHT - 1;
+
+    for (int16_t y = start.y; y <= y_max; y++) {
+        for (int16_t x = start.x; x <= x_max; x++) {
+            // Check for perimeter: Top, Bottom, Left, Right
+            bool on_perimeter = (y == start.y || y == y_max || x == start.x || x == x_max);
+
+            // Draw the perimeter with the given color
+            if (on_perimeter) {
+                point_t pos = {x, y};
+                gfx_setPixel(pos, color);
+            } 
+            // If fill is true, draw the inner area with the fill color
+            else if (fill) {
+                point_t pos = {x, y};
+                gfx_setPixel(pos, fill_color);
+            }
+        }
+    }
+}
+*/
+
 void gfx_drawRect(point_t start, uint16_t width, uint16_t height, color_t color, bool fill)
 {   
     if(width == 0) return;
     if(height == 0) return;
-    volatile  uint16_t x_max = start.x + width - 1;
+	
+    volatile  uint16_t x_max = start.x + width - 1; // Optimization -O3 does not work without volatile
     volatile  uint16_t y_max = start.y + height - 1;
-    bool perimeter = 0;
-    if(x_max > (CONFIG_SCREEN_WIDTH - 1)) x_max = CONFIG_SCREEN_WIDTH - 1;
-    if(y_max > (CONFIG_SCREEN_HEIGHT - 1)) y_max = CONFIG_SCREEN_HEIGHT - 1;
-	 uint16_t count= 0;
-	    for(int16_t y = start.y; y <= y_max; y++)
+
+		if(x_max > (CONFIG_SCREEN_WIDTH - 1)) x_max = CONFIG_SCREEN_WIDTH - 1;
+		if(y_max > (CONFIG_SCREEN_HEIGHT - 1)) y_max = CONFIG_SCREEN_HEIGHT - 1;
+
+	  for(int16_t y = start.y; y <= y_max; y++)
     {
         for(int16_t x = start.x; x <= x_max; x++)
         {
             // Direct check for the perimeter: Top, Bottom, Left, Right
             bool on_perimeter = (y == start.y || y == y_max || x == start.x || x == x_max);
 
-					// Draw the pixel if fill is true, or if we're on the perimeter
+						// Draw the pixel if fill is true, or if we're on the perimeter
             if(fill || on_perimeter)
             {
                 point_t pos = {x, y};
                 gfx_setPixel(pos, color); // Draw the pixel
             }					
-					
-            //if(y == start.y || y == y_max || x == start.x || x == x_max) perimeter = 1;
-            //else perimeter = 0;
-            // If fill is false, draw only rectangle perimeter
-            //if(fill || perimeter)
-            //{
-            //    point_t pos = {x, y};
-            //    gfx_setPixel(pos, color);
-						//		count++;
-            //}
         }
     }
-				//char message2[50]; sprintf(message2, "Counter: %u\n\r", count); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
 }
+
 
 void gfx_drawCircle(point_t start, uint16_t r, color_t color)
 {
@@ -511,6 +593,339 @@ uint8_t gfx_getFontHeight(fontSize_t size)
     return glyph.height;
 }
 
+
+//Tris Test Printing to encoded buffer right away
+
+point_t gfx_printToBufferRLE_Debug(point_t start, fontSize_t size, textAlign_t alignment,
+                                 color_t color, const char *buf, uint8_t *encoded_buffer, 
+                                 uint16_t buffer_width) {
+    GFXfont f = fonts[size];
+    size_t len = strlen(buf);
+
+    // Compute size of the first row in pixels
+    uint16_t line_size = get_line_size(f, buf, len);
+    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
+    start.x = reset_x;
+    uint8_t font_height = font_sizes[size];
+
+    // Save initial start.y value to calculate vertical size
+    uint16_t saved_start_y = start.y;
+
+    // For each row (line) of the characters
+    for (unsigned yy = 0; yy < f.yAdvance; yy++) {
+        // For each character in the string, process the current line
+        for (unsigned i = 0; i < len; i++) {
+            char c = buf[i];
+            GFXglyph glyph = f.glyph[c - f.first];
+            uint8_t *bitmap = f.bitmap;
+
+            uint16_t bo = glyph.bitmapOffset;
+            uint8_t w = glyph.width, h = glyph.height;
+            int8_t xo = glyph.xOffset, yo = glyph.yOffset;
+
+  			    // Check if line yy is visible/contains pixels in the character bitmap
+            if ((yy - font_height) >= yo && (yy - h + yo) <= 5) {
+                // Process each pixel in the current line (across all characters)
+                for (unsigned xx = 0; xx < w; xx++) {
+                    uint8_t bit = (bitmap[bo + ((yy * w) / 8)] >> (7 - (xx % 8))) & 1;
+                    uint16_t pixel = (bit == 0) ? 0x0000 : 0xFFFF;  // Black or white pixel
+
+                    // Print the current pixel value (0 for black, 1 for white)
+                    char message2[50];
+                    sprintf(message2, "%u", (pixel == 0x0000) ? 0 : 1); // Print '0' or '1'
+                    HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+                }
+            } else {
+							  //advance start.x to the correct position to write the next character
+						    start.x+=w;
+					  }
+/*
+            // Add spacing between characters (black pixels)
+            if (i < len - 1) { // If not the last character
+                uint16_t space_pixels = glyph.xAdvance - glyph.width;  // Space between characters
+                if (space_pixels > 0) {
+                    for (uint16_t j = 0; j < space_pixels; j++) {
+                        char message2[50];
+                        sprintf(message2, "%u", 0);  // Print '0' for black pixel (space)
+                        HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+                    }
+                }
+            }
+						*/
+        }
+
+        // After finishing a row, print a new line to the UART
+        char newline[2] = "\r\n";
+        HAL_UART_Transmit(&huart1, (uint8_t *)newline, 2, HAL_MAX_DELAY);
+
+        // Move to the next line (row) and update y-position
+        start.y += f.yAdvance;
+    }
+
+    // Calculate the overall size of the printed text
+    point_t text_size = {0, 0};
+    text_size.x = line_size;
+    text_size.y = (saved_start_y - start.y) + f.yAdvance;
+		
+		return text_size;
+}
+//END Tris Test Printing to encoded buffer right away
+
+
+//Tris Test printing to buffer, instead of screen - Large no compression buffer
+point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
+                        color_t color, const char *buf, uint16_t *smeter_buffer, uint16_t buffer_width)
+{
+    GFXfont f = fonts[size];
+    size_t len = strlen(buf);
+	
+    // Compute size of the first row in pixels
+    uint16_t line_size = get_line_size(f, buf, len);
+    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
+    start.x = reset_x;
+	  uint8_t font_height = font_sizes[size];
+
+    // Save initial start.y value to calculate vertical size
+    uint16_t saved_start_y = start.y;
+    uint16_t line_h = 0;
+
+    /* For each char in the string */
+    for (unsigned i = 0; i < len; i++)
+    {
+        char c = buf[i];
+        GFXglyph glyph = f.glyph[c - f.first];
+        uint8_t *bitmap = f.bitmap;
+
+        uint16_t bo = glyph.bitmapOffset;
+        uint8_t w = glyph.width, h = glyph.height;
+        int8_t xo = glyph.xOffset,
+        			yo = glyph.yOffset;
+        uint8_t xx, yy, bits = 0, bit = 0;
+        line_h = h;
+
+        // Handle newline and carriage return
+        if (c == '\n')
+        {
+            if (alignment != TEXT_ALIGN_CENTER)
+            {
+                start.x = reset_x;
+            }
+            else
+            {
+                line_size = get_line_size(f, &buf[i + 1], len - (i + 1));
+                start.x = reset_x = get_reset_x(alignment, line_size, start.x);
+            }
+            start.y += f.yAdvance;
+            continue;
+        }
+        else if (c == '\r')
+        {
+            start.x = reset_x;
+            continue;
+        }
+
+        // Handle wrap around
+        if (start.x + glyph.xAdvance > buffer_width)
+        {
+            // Compute size of the first row in pixels
+            line_size = get_line_size(f, buf, len);
+            start.x = reset_x = get_reset_x(alignment, line_size, start.x);
+            start.y += f.yAdvance;
+        }
+
+        // Convert color to RGB565 (only once)
+        uint16_t r = (color.r >> 3) & 0x1F;  // Red: 5 bits (0-31)
+        uint16_t g = (color.g >> 2) & 0x3F;  // Green: 6 bits (0-63)
+        uint16_t b = (color.b >> 3) & 0x1F;  // Blue: 5 bits (0-31)
+        uint16_t rgb565 = (r << 11) | (g << 5) | b;  // Combine into RGB565 format
+
+        // Draw bitmap to smeter_buffer
+        for (yy = 0; yy < h; yy++)
+        {
+            for (xx = 0; xx < w; xx++)
+            {
+                if (!(bit++ & 7))
+                {
+                    bits = bitmap[bo++];
+                }
+
+                if (bits & 0x80)
+                {
+                    if (start.y + yo + yy < CONFIG_SCREEN_HEIGHT &&
+                        start.x + xo + xx < CONFIG_SCREEN_WIDTH &&
+                        start.y + yo + yy > 0 &&
+                        start.x + xo + xx > 0)
+                    {
+                        point_t pos;
+                        pos.x = start.x + xo + xx;
+                        pos.y = start.y + yo + yy;
+					
+						            uint16_t buffer_idx = pos.y * buffer_width + pos.x;
+                        // Store the RGB565 color in the buffer
+												//char message2[100];
+											  //sprintf(message2, "pos.x:%i, pos.y:%i, idx:%i \n\r", pos.x,pos.y, buffer_idx); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+                        smeter_buffer[buffer_idx] = rgb565;
+                    }
+                }
+
+                bits <<= 1;
+            }
+        }
+
+        start.x += glyph.xAdvance;
+    }
+
+    // Calculate text size
+    point_t text_size = {0, 0};
+    text_size.x = line_size;
+    text_size.y = (saved_start_y - start.y) + line_h;
+
+    return text_size;
+}
+//END Tris Test printing to buffer, instead of screen - Large no compression buffer
+
+
+//Tris New function encode_buffer - encode from intermediary uncompressed buffer for s_meter test
+void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encoded_buffer) {
+    int encoded_index = 0;
+
+    uint16_t current_color = smeter_buffer[0];  // Starting color to track
+    uint8_t run_length = 1;  // Start with the first pixel already counted
+	
+	  uint8_t color_to_bits[2] = {0b00, 0b01};  // Only black (0x0000) and white (0xFFFF) are used
+
+    for (int j = 1; j < buffer_size; j++) {  // iterate over each pixel
+        if (smeter_buffer[j] == current_color) {
+            run_length++;
+            // If the run length exceeds the maximum allowable count, encode and reset
+            if (run_length == 64) {
+                // Store the current run
+                encoded_buffer[encoded_index++] = (color_to_bits[current_color == 0x0000 ? 0 : 1] << 6) | 64-1; //63 is FFFFFF
+                run_length = 1;
+            }
+        } else {
+            // Encode the current run
+            encoded_buffer[encoded_index++] = (color_to_bits[current_color == 0x0000 ? 0 : 1] << 6) | (run_length-1);
+            // Start a new run for the new color
+            current_color = smeter_buffer[j];
+            run_length = 1;
+        }
+    }
+		// Encode the final run (if there are remaining pixels)
+    if (run_length > 0) {
+				encoded_buffer[encoded_index++] = (color_to_bits[current_color == 0x0000 ? 0 : 1] << 6) | (run_length-1);
+		}
+		  			char message2[50];
+		//sprintf(message2, "encoded_index(nr of bytes): %i\n\r", encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+}
+//END - Tris New function encode_buffer - encode from intermediary uncompressed buffer for s_meter test
+
+
+//Tris - Try to modify gfx_printbuffer to print line per line, insteaf of char per char.. as a first stap to encode buffer function
+point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
+                        color_t color, const char *buf)
+{
+	
+    GFXfont f = fonts[size];
+    size_t len = strlen(buf);
+	
+    // Compute size of the first row in pixels
+    uint16_t line_size = get_line_size(f, buf, len);
+    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
+    uint16_t saved_start_x = start.x = reset_x;
+	  uint8_t font_height = font_sizes[size];
+    // Save initial start.y value to calculate vertical size
+    uint16_t saved_start_y = start.y;
+    uint16_t line_h = 0;
+    uint8_t yy;
+	
+char message2[50];
+sprintf(message2, "reset_x:%i u\r\n", reset_x );  // Print '0' for black pixel (space)
+HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+
+    for (yy = 0; yy < font_height; yy++) {
+			
+        // For each char in the string
+        for (unsigned i = 0; i < len; i++) {
+            char c = buf[i];
+            GFXglyph glyph = f.glyph[c - f.first];
+            uint8_t *bitmap = f.bitmap;
+
+            uint16_t bo = glyph.bitmapOffset;
+            uint8_t w = glyph.width, h = glyph.height;
+            int8_t xo = glyph.xOffset, yo = glyph.yOffset;
+					  bo +=  (yy-yo - font_height); //for each line (that exist) go one byte further in the buffer
+					  start.y = saved_start_y;
+			
+			//uint8_t xx, yy, bits = 0, bit = 0;
+			//already define yy earlier
+            uint8_t xx, bits = 0, bit = 0;
+            line_h = h;
+
+            // Handle newline and carriage return
+            if (c == '\n') {
+                if (alignment != TEXT_ALIGN_CENTER) {
+                    start.x = reset_x;
+                } else {
+                    line_size = get_line_size(f, &buf[i + 1], len - (i + 1));
+                    start.x = reset_x = get_reset_x(alignment, line_size, saved_start_x);
+                }
+                start.y += f.yAdvance;
+                continue;
+            } else if (c == '\r') {
+                start.x = reset_x;
+                continue;
+            }
+
+            // Handle wrap around
+            if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH) {
+                // Compute size of the first row in pixels
+                line_size = get_line_size(f, buf, len);
+                start.x = reset_x = get_reset_x(alignment, line_size, saved_start_x);
+                start.y += f.yAdvance;
+            }
+			
+			      if ((yy - font_height) >= yo && (yy - h + yo) <= 5) {
+                // Draw bitmap
+                for (xx = 0; xx < w; xx++) {
+//sprintf(message2, "Xloop, yy:%i xx:%i, start.x:%i, start.y:%i, width:%u\r\n", yy, xx,start.x, start.y,w );  // Print '0' for black pixel (space)
+//HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+                    if (!(bit++ & 7)) {
+                        bits = bitmap[bo++];
+                    }
+
+                    if (bits & 0x80) {
+                        if (start.y + yo + yy < CONFIG_SCREEN_HEIGHT &&
+                            start.x + xo + xx < CONFIG_SCREEN_WIDTH &&
+                            start.y + yy > 0 &&
+                            start.x + xx > 0) {
+                            point_t pos;
+                            pos.x = start.x + xx;
+                            pos.y = start.y + yy;
+                            gfx_setPixel(pos, color);
+
+//sprintf(message2, "setpixel pos.x:%i, pos.y:%i, yo:%i\r\n", pos.x, pos.y, yo );  // Print '0' for black pixel (space)
+//HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);													
+                        }
+                    }
+
+                    bits <<= 1;
+                }
+			      }
+            start.x += glyph.xAdvance;
+        }
+				start.x = saved_start_x;
+    }
+
+    // Calculate text size
+    point_t text_size = {0, 0};
+    text_size.x = line_size;
+    text_size.y = (saved_start_y - start.y) + line_h;
+
+    return text_size;
+}
+//END Tris - Try to modify gfx_printbuffer to print line per line, insteaf of char per char.. as a first stap to encode buffer function
+
 point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf)
 {
@@ -521,6 +936,7 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
     // Compute size of the first row in pixels
     uint16_t line_size = get_line_size(f, buf, len);
     uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
+	  //TRIS FIX: Keeping saved_start_x for positioning new line
     start.x = reset_x;
     // Save initial start.y value to calculate vertical size
     uint16_t saved_start_y = start.y;
@@ -550,7 +966,8 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
           else
           {
             line_size = get_line_size(f, &buf[i+1], len-(i+1));
-            start.x = reset_x = get_reset_x(alignment, line_size, start.x);
+						//TRIS - FIX: replaced start.x by reset_x, that contains the intial value
+            start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
           }
           start.y += f.yAdvance;
           continue;
@@ -562,11 +979,13 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         }
 
         // Handle wrap around
-        if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
+        //if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)  //bug?
+				if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
         {
             // Compute size of the first row in pixels
             line_size = get_line_size(f, buf, len);
-            start.x = reset_x = get_reset_x(alignment, line_size, start.x);
+					  //TRIS - FIX: replaced start.x by reset_x, that contains the intial value
+            start.x = reset_x = get_reset_x(alignment, line_size, reset_x); 
             start.y += f.yAdvance;
         }
 
@@ -855,7 +1274,7 @@ void gfx_drawSmeter(point_t start, uint16_t width, uint16_t height, rssi_t rssi,
     point_t rssi_pos = { start.x, (uint8_t) (start.y + 2 + squelch_height + volume_height)};
     extern color_t spectrum_getColorFromLevel(uint16_t Level);
     for (int i = 0; i < s_level*2; i++) {
-        uint16_t fragment_width = (width - 1) / 22;
+        uint16_t fragment_width = (width - 1) / 22; //will never work due to integer division, it will be rounded down and 1x x 22 times -> never shows full s_level 
         point_t fragment_pos = {start.x + i * fragment_width, rssi_pos.y};
         gfx_drawRect(fragment_pos, fragment_width, rssi_height, spectrum_getColorFromLevel((80+6*i)/4), true);
     }

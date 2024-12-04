@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <gps.h>
 
 #ifdef __cplusplus
@@ -77,6 +78,11 @@ typedef struct color_t
     uint8_t b;
     uint8_t alpha;
 } color_t;
+
+//TRIS - We need to know the fonts size to print directly to RLE encoded buffer
+//The const font_sizes should correspond with enum fontSize_t !!
+
+extern const uint8_t font_sizes[];
 
 typedef enum
 {
@@ -207,7 +213,8 @@ void gfx_drawVLine(int16_t x, uint16_t width, color_t color);
  */
 void gfx_drawRect(point_t start, uint16_t width, uint16_t height, color_t color,
                   bool fill);
-
+void gfx_drawRect2(point_t start, int16_t width, int16_t height, color_t color,
+									bool fill, color_t fill_color);
 /**
  * Draw the outline of a circle of specified radius and color.
  * @param start: screen position of the center of the circle, in pixels
@@ -235,6 +242,19 @@ uint8_t gfx_getFontHeight(fontSize_t size);
  */
 point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf);
+												
+//Tris Test function
+point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
+                        color_t color, const char *buf);
+												
+point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
+                        color_t color, const char *buf, uint16_t *smeter_buffer, uint16_t buffer_width);
+
+point_t gfx_printToBufferRLE_Debug(point_t start, fontSize_t size, textAlign_t alignment,
+                                 color_t color, const char *buf, uint8_t *encoded_buffer, 
+                                 uint16_t buffer_width);
+																 
+void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encoded_buffer);
 
 /**
  * Prints text on the screen at the specified coordinates.
