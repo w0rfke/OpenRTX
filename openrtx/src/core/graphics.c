@@ -54,6 +54,13 @@
 #include <UbuntuRegular18pt7b.h>
 #include <UbuntuRegular24pt7b.h>
 
+//Tris Fonts
+#include <TomThumbPlus V2.h>
+#include <Terminus Mono 7PX W5 H9.h>
+#include <Terminus Mono 7PX W6 H9.h>
+#include <Proggy 5x7.h>
+
+
 #include <Symbols5pt7b.h>
 #include <Symbols6pt7b.h>
 #include <Symbols8pt7b.h>
@@ -70,6 +77,8 @@ extern UART_HandleTypeDef huart1;
 /**
  * Fonts, ordered by the fontSize_t enum.
  */
+ 
+/* //ORIGINAL
 static const GFXfont fonts[] = { TomThumb,            // 5pt
     #if defined FONT_FREE_SANS
                                  FreeSans6pt7b,       // 6pt
@@ -92,13 +101,38 @@ static const GFXfont fonts[] = { TomThumb,            // 5pt
                                  Symbols6pt7b,      // 6pt
                                  Symbols8pt7b       // 8pt
                                };
+*/
+
+//TRIS Fonts
+static const GFXfont fonts[] = { TomThumbPlus,            // 5pt
+    #if defined FONT_FREE_SANS
+                                 FreeSans6pt7b,       // 6pt
+                                 FreeSans8pt7b,       // 8pt
+                                 FreeSans9pt7b,       // 9pt
+                                 FreeSans10pt7b,      // 10pt
+                                 FreeSans12pt7b,      // 12pt
+                                 FreeSans16pt7b,      // 16pt
+    #elif defined FONT_UBUNTU_REGULAR
+                                 Proggy7Px,  // 6pt
+                                 TerminusMono7px,  // 8pt
+                                 UbuntuRegular9pt7b,  // 9pt
+                                 UbuntuRegular10pt7b, // 10pt
+                                 UbuntuRegular12pt7b, // 12pt
+                                 UbuntuRegular16pt7b, // 16pt
+    #else
+    #error Unsupported font family!
+    #endif
+                                 Symbols5pt7b,      // 5pt
+                                 Symbols6pt7b,      // 6pt
+                                 Symbols8pt7b       // 8pt
+                               };
 
 const uint8_t font_sizes[] = {
     5,  // FONT_SIZE_5PT
-    6,  // FONT_SIZE_6PT
-    8,  // FONT_SIZE_8PT
-    9,  // FONT_SIZE_9PT
-    10, // FONT_SIZE_10PT
+    8,  // FONT_SIZE_6PT -- the chars themselves are 8px, but start a line lower, so at least 9 is needed. 11 is for the / sign which is too high
+    12,  // FONT_SIZE_8PT
+    13,  // FONT_SIZE_9PT
+    13, // FONT_SIZE_10PT
     12, // FONT_SIZE_12PT
     16  // FONT_SIZE_16PT
 };
@@ -596,24 +630,98 @@ uint8_t gfx_getFontHeight(fontSize_t size)
 
 //Tris Test Printing to encoded buffer right away
 
-point_t gfx_printToBufferRLE_Debug(point_t start, fontSize_t size, textAlign_t alignment,
-                                 color_t color, const char *buf, uint8_t *encoded_buffer, 
-                                 uint16_t buffer_width) {
+point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
     GFXfont f = fonts[size];
     size_t len = strlen(buf);
 
     // Compute size of the first row in pixels
     uint16_t line_size = get_line_size(f, buf, len);
-    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
-    start.x = reset_x;
+    uint16_t reset_x = start.x = get_reset_x(alignment, line_size, start.x);
+    //uint16_t saved_start_x = start.x = reset_x;
     uint8_t font_height = font_sizes[size];
-
+	uint8_t extra_font_height = 0;
     // Save initial start.y value to calculate vertical size
     uint16_t saved_start_y = start.y;
+    uint16_t line_h = 0;
+    int16_t yy;
 
-    // For each row (line) of the characters
-    for (unsigned yy = 0; yy < f.yAdvance; yy++) {
-        // For each character in the string, process the current line
+    // Initialize the encoded buffer header
+    uint8_t num_color_bits = 2; // Tris for testing
+    encoded_buffer[COLOR_BITS_B0] = num_color_bits;
+    uint8_t max_colors = 1 << num_color_bits;
+    int encoded_index = COLOR_START_B9 + (max_colors * 2);
+
+    encoded_buffer[START_X_LSB_B1] = start.x & 0xFF;
+    encoded_buffer[START_X_MSB_B2] = (start.x >> 8) & 0xFF;
+    encoded_buffer[START_Y_LSB_B3] = start.y & 0xFF;
+    encoded_buffer[START_Y_MSB_B4] = (start.y >> 8) & 0xFF;
+    encoded_buffer[WIDTH_LSB_B5] = line_size & 0xFF;
+    encoded_buffer[WIDTH_MSB_B6] = (line_size >> 8) & 0xFF;
+    //encoded_buffer[HEIGHT_LSB_B7] = (font_height) & 0xFF;
+    //encoded_buffer[HEIGHT_MSB_B8] = (font_height >> 8) & 0xFF;
+
+
+    // Ensure we do not exceed the provided number of colors
+    for (int i = 0; i < max_colors && i < num_colors; i++) { 
+        encoded_buffer[COLOR_START_B9 + 2*i] = colors[i] & 0xFF;               //first color is used as background. corresponds to current_color==0
+        encoded_buffer[COLOR_START_B9 + 2*i + 1] = (colors[i] >> 8) & 0xFF;   //second color is used as text color. corresponds to current_color==1
+    }
+
+    uint16_t current_color = 0;  // Start with the background color (black)
+    uint8_t run_length = 0;
+    uint8_t color_shift_left = 8 - num_color_bits;
+    uint8_t max_run_length = (1 << color_shift_left) - 1;
+    //Font height comes from array font_size, but can be increased if we encounter characters that go lower then yo==0
+		// For each char in the string
+    for (unsigned i = 0; i < len; i++) {
+        char c = buf[i];
+        GFXglyph glyph = f.glyph[c - f.first];
+        //uint8_t *bitmap = f.bitmap;
+        //uint16_t bo = glyph.bitmapOffset;
+        //uint8_t w = glyph.width, h = glyph.height;
+        uint8_t h = glyph.height;
+        //int8_t xo = glyph.xOffset, yo = glyph.yOffset;
+        int8_t yo = glyph.yOffset;
+        //start.y = saved_start_y;
+
+
+        //uint8_t xx, bits = 0, bit = 0;
+        line_h = h;
+			
+			  //handle newline cr and wrap around later.
+
+        // Handle newline and carriage return
+        if (c == '\n') {
+            if (alignment != TEXT_ALIGN_CENTER) {
+                start.x = reset_x;
+            } else {
+                line_size = get_line_size(f, &buf[i + 1], len - (i + 1));
+                start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
+            }
+       //   start.y += f.yAdvance;
+            continue;
+        } else if (c == '\r') {
+      //    start.x = reset_x;
+            continue;
+        }
+
+        // Handle wrap around
+        if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH) {
+            line_size = get_line_size(f, buf, len);
+  //         start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
+  //         start.y += f.yAdvance;
+        }
+				//if the char goes lower then baseline (comma, y, etc) foresee extra lines.
+				if ((h+yo) > extra_font_height) {
+				     extra_font_height = (h+yo);
+				}
+    }
+		//add total height to the buffer header:
+		encoded_buffer[HEIGHT_LSB_B7] = (font_height+extra_font_height) & 0xFF;
+    encoded_buffer[HEIGHT_MSB_B8] = ((font_height+extra_font_height) >> 8) & 0xFF;
+		
+    for (yy = -font_height; yy < extra_font_height; yy++) {
+        // For each char in the string
         for (unsigned i = 0; i < len; i++) {
             char c = buf[i];
             GFXglyph glyph = f.glyph[c - f.first];
@@ -622,54 +730,240 @@ point_t gfx_printToBufferRLE_Debug(point_t start, fontSize_t size, textAlign_t a
             uint16_t bo = glyph.bitmapOffset;
             uint8_t w = glyph.width, h = glyph.height;
             int8_t xo = glyph.xOffset, yo = glyph.yOffset;
+            start.y = saved_start_y;
 
-  			    // Check if line yy is visible/contains pixels in the character bitmap
-            if ((yy - font_height) >= yo && (yy - h + yo) <= 5) {
-                // Process each pixel in the current line (across all characters)
-                for (unsigned xx = 0; xx < w; xx++) {
-                    uint8_t bit = (bitmap[bo + ((yy * w) / 8)] >> (7 - (xx % 8))) & 1;
-                    uint16_t pixel = (bit == 0) ? 0x0000 : 0xFFFF;  // Black or white pixel
+            uint8_t xx, bits = 0, bit = 0;
+            line_h = h;
 
-                    // Print the current pixel value (0 for black, 1 for white)
-                    char message2[50];
-                    sprintf(message2, "%u", (pixel == 0x0000) ? 0 : 1); // Print '0' or '1'
-                    HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+            // Ensure we write the necessary amount of black pixels for lines without data
+			if (yy < yo || yy >= yo + h) {
+                // For characters that are fully black pixels (no data to draw)
+                for (xx = 0; xx < glyph.xAdvance; xx++) {
+                    if (current_color == 0) {
+                        run_length++;
+                        if (run_length == max_run_length) {
+                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                            run_length = 0;
+                        }
+                    } else {
+                        if (run_length > 0) {
+                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                        }
+                        current_color = 0;
+                        run_length = 1;
+                    }
                 }
+							
             } else {
-							  //advance start.x to the correct position to write the next character
-						    start.x+=w;
-					  }
-/*
-            // Add spacing between characters (black pixels)
-            if (i < len - 1) { // If not the last character
-                uint16_t space_pixels = glyph.xAdvance - glyph.width;  // Space between characters
-                if (space_pixels > 0) {
-                    for (uint16_t j = 0; j < space_pixels; j++) {
-                        char message2[50];
-                        sprintf(message2, "%u", 0);  // Print '0' for black pixel (space)
-                        HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+							
+                // Draw bitmap and handle padding
+                int16_t bit_offset = (yy - yo) * w;  // Total bit offset
+                bo += bit_offset / 8; // For each line (that exists) go one byte further in the buffer
+                bits = bitmap[bo++];
+                bit = (bit_offset) % 8;
+                bits <<= bit;
+
+                for (xx = 0; xx < glyph.xAdvance; xx++) {
+                    uint8_t pixel_color;
+
+                    // Handle case where the pixel exceeds the width of the character and is padding
+                    if (xx >= w) {
+                        pixel_color = 0;  // This is black (background) padding pixel						
+                    } else {
+                        pixel_color = (bits & 0x80) >> 7;  // 1 for text (white), 0 for background (black)
+                    }
+
+                    // Check if the pixel color is the same as the previous one
+                    if (pixel_color == current_color) {
+                        run_length++;
+                        if (run_length == max_run_length) {
+                            // Encode the run
+                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                            run_length = 0;
+                        }
+                    } else {
+                        // Encode the previous run if needed
+                        if (run_length > 0) {
+                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                        }
+                        current_color = pixel_color;
+                        run_length = 1;
+                    }
+
+                    // Shift the bits left to process the next pixel
+                    bits <<= 1;
+                    //bit++;
+
+                    // If bit%8 == 0
+                    if (!(++bit & 7)) {
+                        bits = bitmap[bo++];  // Load the next byte from the bitmap
                     }
                 }
             }
-						*/
+            start.x += glyph.xAdvance;
         }
-
-        // After finishing a row, print a new line to the UART
-        char newline[2] = "\r\n";
-        HAL_UART_Transmit(&huart1, (uint8_t *)newline, 2, HAL_MAX_DELAY);
-
-        // Move to the next line (row) and update y-position
-        start.y += f.yAdvance;
+        start.x = reset_x;
     }
 
-    // Calculate the overall size of the printed text
+    // Encode the final run (if there are remaining pixels)
+    if (run_length > 0) {
+        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+    }
+//char message2[100];
+//sprintf(message2, "size of buffer+header: %i\n\r", encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);			
+	  
+		
+    // Calculate text size
     point_t text_size = {0, 0};
     text_size.x = line_size;
-    text_size.y = (saved_start_y - start.y) + f.yAdvance;
-		
-		return text_size;
+    text_size.y = (saved_start_y - start.y) + line_h;
+
+    return text_size;
 }
+
 //END Tris Test Printing to encoded buffer right away
+
+
+//TRIS version with wiping screen behind the buffer characters
+point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
+                        color_t color, const char *buf)
+{
+    GFXfont f = fonts[size];
+
+    size_t len = strlen(buf);
+
+    uint16_t line_size = 0;
+	  uint8_t extra_font_height = 0;
+	  uint8_t font_height = 0;
+    for(unsigned i = 0; i < len && buf[i] != '\n' && buf[i] != '\r'; i++)
+    {
+        GFXglyph glyph = f.glyph[buf[i] - f.first];
+		    uint8_t h = glyph.height;
+		    int8_t  yo = glyph.yOffset;
+		    //find highest amount of pixels above y baseline
+		    if (-yo > font_height)
+		    {
+			      font_height = -yo;
+		    }
+        //find highest amount of pixels below y baseline
+        if ((h+yo) > extra_font_height) {
+            extra_font_height = (h+yo);
+        }
+			  if ((line_size + glyph.xAdvance) < (132-start.x))
+            line_size += glyph.xAdvance;
+        else
+            break;
+    }
+
+
+		uint16_t total_font_height = font_height+extra_font_height;
+    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
+	  //clear screen behind the area where we will print the first line
+	  display_colorWindow565(reset_x, start.y-total_font_height+extra_font_height,line_size , total_font_height , 0xF8);
+	
+	  //TRIS FIX: Keeping saved_start_x for positioning new line
+    start.x = reset_x;
+    // Save initial start.y value to calculate vertical size
+    uint16_t saved_start_y = start.y;
+    uint16_t line_h = 0;
+
+     //if we have newline or wrap around, we need clear screen behind it fist
+     bool writeanotherline = 0;
+    /* For each char in the string */
+	  for(unsigned i = 0; i < len; i++)
+      {
+        char c = buf[i];
+        GFXglyph glyph = f.glyph[c - f.first];
+        uint8_t *bitmap = f.bitmap;
+
+        uint16_t bo = glyph.bitmapOffset;
+        uint8_t w = glyph.width, h = glyph.height;
+        int8_t xo = glyph.xOffset,
+               yo = glyph.yOffset;
+        uint8_t xx, yy, bits = 0, bit = 0;
+        line_h = h;
+		
+
+        // Handle newline and carriage return
+        if (c == '\n')
+        {
+            if(alignment!=TEXT_ALIGN_CENTER)
+            {
+                start.x = reset_x;
+            }
+            else
+            {
+                line_size = get_line_size(f, &buf[i+1], len-(i+1));
+                //TRIS - FIX: replaced start.x by reset_x, which contains the intial value
+                start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
+            }
+            start.y += f.yAdvance;
+		        writeanotherline = 1;
+            continue;
+        }
+        else if (c == '\r')
+        {
+            start.x = reset_x;
+            continue;
+        }
+
+        // Handle wrap around
+        //if ((start.x + glyph.xAdvance) > (CONFIG_SCREEN_WIDTH - reset_x))  //bug fix?
+        if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
+        {
+            // Compute size of the first row in pixels
+            //line_size = get_line_size(f, buf, len);
+					   line_size = get_line_size(f, &buf[i], len-(i));
+            //TRIS - FIX: replaced start.x by reset_x, which contains the intial value
+            start.x = reset_x = get_reset_x(alignment, line_size, reset_x); 
+            start.y += f.yAdvance;
+		        writeanotherline = 1;
+        }
+		
+        if (writeanotherline) {
+            display_colorWindow565(reset_x, start.y-total_font_height+extra_font_height,line_size, total_font_height , 0xF8);
+			      writeanotherline = 0;
+        }
+
+        // Draw bitmap
+        for (yy = 0; yy < h; yy++)
+        {
+            for (xx = 0; xx < w; xx++)
+            {
+                if (!(bit++ & 7))
+                {
+                    bits = bitmap[bo++];
+                }
+
+                if (bits & 0x80)
+                {
+                    if (start.y + yo + yy < CONFIG_SCREEN_HEIGHT &&
+                        start.x + xo + xx < CONFIG_SCREEN_WIDTH &&
+                        start.y + yo + yy > 0 &&
+                        start.x + xo + xx > 0)
+                    {
+                        point_t pos;
+                        pos.x = start.x + xo + xx;
+                        pos.y = start.y + yo + yy;
+                        gfx_setPixel(pos, color);
+
+                    }
+                }
+
+                bits <<= 1;
+            }
+        }
+
+        start.x += glyph.xAdvance;
+    }
+    // Calculate text size
+    point_t text_size = {0, 0};
+    text_size.x = line_size;
+    text_size.y = (saved_start_y - start.y) + line_h;
+    return text_size;
+}
+//END TRIS version with wiping screen behind the buffer characters
+
 
 
 //Tris Test printing to buffer, instead of screen - Large no compression buffer
@@ -728,6 +1022,8 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         if (start.x + glyph.xAdvance > buffer_width)
         {
             // Compute size of the first row in pixels
+					
+					  //BUG?? line_size does not take start.x into account..
             line_size = get_line_size(f, buf, len);
             start.x = reset_x = get_reset_x(alignment, line_size, start.x);
             start.y += f.yAdvance;
@@ -821,110 +1117,8 @@ void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encod
 //END - Tris New function encode_buffer - encode from intermediary uncompressed buffer for s_meter test
 
 
-//Tris - Try to modify gfx_printbuffer to print line per line, insteaf of char per char.. as a first stap to encode buffer function
-point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
-                        color_t color, const char *buf)
-{
-	
-    GFXfont f = fonts[size];
-    size_t len = strlen(buf);
-	
-    // Compute size of the first row in pixels
-    uint16_t line_size = get_line_size(f, buf, len);
-    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
-    uint16_t saved_start_x = start.x = reset_x;
-	  uint8_t font_height = font_sizes[size];
-    // Save initial start.y value to calculate vertical size
-    uint16_t saved_start_y = start.y;
-    uint16_t line_h = 0;
-    uint8_t yy;
-	
-char message2[50];
-sprintf(message2, "reset_x:%i u\r\n", reset_x );  // Print '0' for black pixel (space)
-HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
 
-    for (yy = 0; yy < font_height; yy++) {
-			
-        // For each char in the string
-        for (unsigned i = 0; i < len; i++) {
-            char c = buf[i];
-            GFXglyph glyph = f.glyph[c - f.first];
-            uint8_t *bitmap = f.bitmap;
 
-            uint16_t bo = glyph.bitmapOffset;
-            uint8_t w = glyph.width, h = glyph.height;
-            int8_t xo = glyph.xOffset, yo = glyph.yOffset;
-					  bo +=  (yy-yo - font_height); //for each line (that exist) go one byte further in the buffer
-					  start.y = saved_start_y;
-			
-			//uint8_t xx, yy, bits = 0, bit = 0;
-			//already define yy earlier
-            uint8_t xx, bits = 0, bit = 0;
-            line_h = h;
-
-            // Handle newline and carriage return
-            if (c == '\n') {
-                if (alignment != TEXT_ALIGN_CENTER) {
-                    start.x = reset_x;
-                } else {
-                    line_size = get_line_size(f, &buf[i + 1], len - (i + 1));
-                    start.x = reset_x = get_reset_x(alignment, line_size, saved_start_x);
-                }
-                start.y += f.yAdvance;
-                continue;
-            } else if (c == '\r') {
-                start.x = reset_x;
-                continue;
-            }
-
-            // Handle wrap around
-            if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH) {
-                // Compute size of the first row in pixels
-                line_size = get_line_size(f, buf, len);
-                start.x = reset_x = get_reset_x(alignment, line_size, saved_start_x);
-                start.y += f.yAdvance;
-            }
-			
-			      if ((yy - font_height) >= yo && (yy - h + yo) <= 5) {
-                // Draw bitmap
-                for (xx = 0; xx < w; xx++) {
-//sprintf(message2, "Xloop, yy:%i xx:%i, start.x:%i, start.y:%i, width:%u\r\n", yy, xx,start.x, start.y,w );  // Print '0' for black pixel (space)
-//HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-                    if (!(bit++ & 7)) {
-                        bits = bitmap[bo++];
-                    }
-
-                    if (bits & 0x80) {
-                        if (start.y + yo + yy < CONFIG_SCREEN_HEIGHT &&
-                            start.x + xo + xx < CONFIG_SCREEN_WIDTH &&
-                            start.y + yy > 0 &&
-                            start.x + xx > 0) {
-                            point_t pos;
-                            pos.x = start.x + xx;
-                            pos.y = start.y + yy;
-                            gfx_setPixel(pos, color);
-
-//sprintf(message2, "setpixel pos.x:%i, pos.y:%i, yo:%i\r\n", pos.x, pos.y, yo );  // Print '0' for black pixel (space)
-//HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);													
-                        }
-                    }
-
-                    bits <<= 1;
-                }
-			      }
-            start.x += glyph.xAdvance;
-        }
-				start.x = saved_start_x;
-    }
-
-    // Calculate text size
-    point_t text_size = {0, 0};
-    text_size.x = line_size;
-    text_size.y = (saved_start_y - start.y) + line_h;
-
-    return text_size;
-}
-//END Tris - Try to modify gfx_printbuffer to print line per line, insteaf of char per char.. as a first stap to encode buffer function
 
 point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf)
@@ -983,7 +1177,9 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
 				if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
         {
             // Compute size of the first row in pixels
-            line_size = get_line_size(f, buf, len);
+					  //BUG, the next line_length is the remainer of the pixels..some alignments will break
+            //line_size = get_line_size(f, buf, len);
+					  line_size = get_line_size(f, &buf[i], len-(i));
 					  //TRIS - FIX: replaced start.x by reset_x, that contains the intial value
             start.x = reset_x = get_reset_x(alignment, line_size, reset_x); 
             start.y += f.yAdvance;
@@ -1022,6 +1218,8 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
     }
     // Calculate text size
     point_t text_size = {0, 0};
+		
+	  //only correct for maximum 1 line
     text_size.x = line_size;
     text_size.y = (saved_start_y - start.y) + line_h;
     return text_size;

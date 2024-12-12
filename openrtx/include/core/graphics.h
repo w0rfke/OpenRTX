@@ -111,6 +111,21 @@ typedef enum
     TEXT_ALIGN_RIGHT
 } textAlign_t;
 
+//Tris for CRLE Buffer Header
+typedef enum {
+    COLOR_BITS_B0 = 0,
+    START_X_LSB_B1 = 1,
+    START_X_MSB_B2 = 2,
+    START_Y_LSB_B3 = 3,
+    START_Y_MSB_B4 = 4,
+    WIDTH_LSB_B5 = 5,
+    WIDTH_MSB_B6 = 6,
+    HEIGHT_LSB_B7 = 7,
+    HEIGHT_MSB_B8 = 8,
+    COLOR_START_B9 = 9,
+
+} HeaderFields;
+
 
 /**
  * This function calls the correspondent method of the low level interface display.h
@@ -250,9 +265,7 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
 point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf, uint16_t *smeter_buffer, uint16_t buffer_width);
 
-point_t gfx_printToBufferRLE_Debug(point_t start, fontSize_t size, textAlign_t alignment,
-                                 color_t color, const char *buf, uint8_t *encoded_buffer, 
-                                 uint16_t buffer_width);
+point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors);
 																 
 void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encoded_buffer);
 
