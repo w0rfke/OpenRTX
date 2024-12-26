@@ -203,5 +203,5 @@ static const GFXglyph Proggy7PxGlyphs[] PROGMEM = {
 static const GFXfont Proggy7Px PROGMEM = {
 (uint8_t*)Proggy7PxBitmaps,
 (GFXglyph*)Proggy7PxGlyphs,
-0x20, 0x7E, 7 
+0x20, 0x7E, 10 
 };

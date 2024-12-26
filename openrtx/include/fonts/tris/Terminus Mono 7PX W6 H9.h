@@ -203,5 +203,5 @@ static const GFXglyph TerminusMono7pxGlyphs[] PROGMEM = {
 static const GFXfont TerminusMono7px PROGMEM = {
 (uint8_t*)TerminusMono7pxBitmaps,
 (GFXglyph*)TerminusMono7pxGlyphs,
-0x20, 0x7E, 7 
+0x20, 0x7E, 10 
 };

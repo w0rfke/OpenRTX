@@ -77,7 +77,7 @@ void openrtx_init()
     // hide random pixels during render process
 		
 		//color full screen red, so that we can see the edges for a36plus
-		display_colorWindow565(0, 0, 162, 132 , 0xF800);
+		display_colorWindow565(0, 0, 132, 162, 0xF800);
 		//draw blue where the screen SHOULD be, if we see blue something is wrong
 		display_colorWindow565(0, 0, 132, 128 , 0x00F8);
     ui_drawSplashScreen();

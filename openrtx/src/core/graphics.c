@@ -68,6 +68,7 @@
 //added for debugging functions
 #include "string.h" //For Huart1 strlen
 extern UART_HandleTypeDef huart1;
+#include "stm32f401xe.h"
 
 // Variable swap macro
 #define DEG_RAD  0.017453292519943295769236907684886
@@ -127,16 +128,25 @@ static const GFXfont fonts[] = { TomThumbPlus,            // 5pt
                                  Symbols8pt7b       // 8pt
                                };
 
-const uint8_t font_sizes[] = {
-    5,  // FONT_SIZE_5PT
-    8,  // FONT_SIZE_6PT -- the chars themselves are 8px, but start a line lower, so at least 9 is needed. 11 is for the / sign which is too high
-    12,  // FONT_SIZE_8PT
-    13,  // FONT_SIZE_9PT
-    13, // FONT_SIZE_10PT
-    12, // FONT_SIZE_12PT
-    16  // FONT_SIZE_16PT
+typedef struct {
+    uint8_t font_size;  // Height above the baseline
+    uint8_t font_height; // Total height including below baseline,for characters like "j" and comma.
+} Font_detail;
+
+
+                               
+const Font_detail font_detail[] = {
+    {5, 5}, // FONT_SIZE_5PT
+    {7, 9},// FONT_SIZE_6PT -- the chars themselves are 8px, but start a line lower, so at least 9 is needed. 11 is for the / sign which is too high
+    //Fonts below need sizes updated!
+    {12,15},  // FONT_SIZE_8PT
+    {13,15}, // FONT_SIZE_9PT
+    {13,15}, // FONT_SIZE_10PT
+    {12,15}, // FONT_SIZE_12PT
+    {16,15} // FONT_SIZE_16PT
 };
-															 
+
+
 #ifdef CONFIG_PIX_FMT_RGB565
 
 /* This specialization is meant for an RGB565 little endian pixel format.
@@ -208,7 +218,7 @@ static char text[32];
 
 void gfx_init()
 {
-		display_init();
+    display_init();
     // Clear text buffer
     memset(text, 0x00, 32);
 }
@@ -426,9 +436,9 @@ void gfx_drawRect2(point_t start, int16_t width, int16_t height, color_t color, 
     if (x_max > CONFIG_SCREEN_WIDTH-1) x_max = CONFIG_SCREEN_WIDTH - 1;
     if (y_max >= CONFIG_SCREEN_HEIGHT-1) y_max = CONFIG_SCREEN_HEIGHT - 1;
 
-    char message2[50];
-		//sprintf(message2, "start.x: %u\n\r", state.devStatus); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-		
+    //char message2[50];
+    //sprintf(message2, "start.x: %u\n\r", state.devStatus); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+    
     // Loop over the rectangle area directly from start to max
     for (int16_t y = start.y; y <= y_max; y++) {
         for (int16_t x = start.x; x <= x_max; x++) {
@@ -438,11 +448,11 @@ void gfx_drawRect2(point_t start, int16_t width, int16_t height, color_t color, 
                 point_t pos = {x, y};
                 gfx_setPixel(pos, color);  // Draw the pixel
             }
-						else if(fill)
+            else if(fill)
             {
                 point_t pos = {x, y};
                 gfx_setPixel(pos, fill_color); // Draw the pixel
-            }	
+            }  
         }
     }
 }
@@ -482,26 +492,26 @@ void gfx_drawRect(point_t start, uint16_t width, uint16_t height, color_t color,
 {   
     if(width == 0) return;
     if(height == 0) return;
-	
+  
     volatile  uint16_t x_max = start.x + width - 1; // Optimization -O3 does not work without volatile
     volatile  uint16_t y_max = start.y + height - 1;
 
-		if(x_max > (CONFIG_SCREEN_WIDTH - 1)) x_max = CONFIG_SCREEN_WIDTH - 1;
-		if(y_max > (CONFIG_SCREEN_HEIGHT - 1)) y_max = CONFIG_SCREEN_HEIGHT - 1;
+    if(x_max > (CONFIG_SCREEN_WIDTH - 1)) x_max = CONFIG_SCREEN_WIDTH - 1;
+    if(y_max > (CONFIG_SCREEN_HEIGHT - 1)) y_max = CONFIG_SCREEN_HEIGHT - 1;
 
-	  for(int16_t y = start.y; y <= y_max; y++)
+    for(int16_t y = start.y; y <= y_max; y++)
     {
         for(int16_t x = start.x; x <= x_max; x++)
         {
             // Direct check for the perimeter: Top, Bottom, Left, Right
             bool on_perimeter = (y == start.y || y == y_max || x == start.x || x == x_max);
 
-						// Draw the pixel if fill is true, or if we're on the perimeter
+            // Draw the pixel if fill is true, or if we're on the perimeter
             if(fill || on_perimeter)
             {
                 point_t pos = {x, y};
                 gfx_setPixel(pos, color); // Draw the pixel
-            }					
+            }          
         }
     }
 }
@@ -583,19 +593,36 @@ void gfx_drawVLine(int16_t x, uint16_t width, color_t color)
  * @param f: font used as the source of glyphs
  * @param text: the input text
  * @param length: the length of the input text, used for boundary checking
- */
-static inline uint16_t get_line_size(GFXfont f, const char *text, uint16_t length)
+ *        line_size goes from "1 to CONFIG_SCREEN_WIDTH", not "0 to CONFIG_SCREEN_WIDTH - 1"
+  */
+static inline uint16_t get_line_size(GFXfont f, uint16_t startx, const char *text, uint16_t length)
 {
     uint16_t line_size = 0;
+    uint16_t x_max = CONFIG_SCREEN_WIDTH - startx;   //start.x needs to be taken into account for screen boundary
     for(unsigned i = 0; i < length && text[i] != '\n' && text[i] != '\r'; i++)
     {
         GFXglyph glyph = f.glyph[text[i] - f.first];
-        if (line_size + glyph.xAdvance < CONFIG_SCREEN_WIDTH)
+        if ((line_size + glyph.xAdvance) <= x_max)   //Correct to <= instead of <
             line_size += glyph.xAdvance;
         else
             break;
     }
+    return line_size;
+}
 
+
+static inline uint16_t get_line_size2(GFXfont f, uint16_t startx, const char *text, uint16_t length, uint16_t x_max)
+{
+    uint16_t line_size = 0;
+    //uint16_t x_max = width - startx;   //start.x needs to be taken into account for screen boundary
+    for(unsigned i = 0; i < length && text[i] != '\n' && text[i] != '\r'; i++)
+    {
+        GFXglyph glyph = f.glyph[text[i] - f.first];
+        if ((line_size + glyph.xAdvance) <= x_max)   //Correct to <= instead of <
+            line_size += glyph.xAdvance;
+        else
+            break;
+    }
     return line_size;
 }
 
@@ -612,7 +639,7 @@ static inline uint16_t get_reset_x(textAlign_t alignment, uint16_t line_size,
         case TEXT_ALIGN_LEFT:
             return startx;
         case TEXT_ALIGN_CENTER:
-            return (CONFIG_SCREEN_WIDTH - line_size)/2;
+            return (CONFIG_SCREEN_WIDTH - line_size - startx)/2; //Center alignment, take start.x into account if start.x <> 0
         case TEXT_ALIGN_RIGHT:
             return CONFIG_SCREEN_WIDTH - line_size - startx;
     }
@@ -628,198 +655,927 @@ uint8_t gfx_getFontHeight(fontSize_t size)
 }
 
 
-//Tris Test Printing to encoded buffer right away
 
-point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
+         //TRIS COMPARE FUNCTION
+point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
+  alignment = 0;
+ 
     GFXfont f = fonts[size];
     size_t len = strlen(buf);
+    uint8_t font_height = font_detail[size].font_size;
+    uint8_t total_font_height = font_detail[size].font_height;
+    uint16_t combined_buffer_height = total_font_height; //so we can easily return buffer height - does it already work for single line?
+    uint16_t line_size = 0;
+    uint8_t additional_write_lines = 0;     //in case of newline or wrap around
+    uint8_t temp_byte = 0;                  //store encoded byte for comparison
+    int16_t buffer_start_changed_x = -1;    // The first X position (lowest value) across all lines where a pixel has changed. -1 indicates no changes.
+    int16_t buffer_end_changed_x = 0;       // The last X position (highest value) across all lines where a pixel has changed. 0 indicates no changes (if no changes have been tracked).
+    uint16_t temp_pixel_idx = 0;
+    uint16_t encoded_pixel_idx = 0;
+     
+    //If we don't have buffer width & height: automatic processing
+    //these variables need to be added to the header and function declaration later, now for testing:
+    uint16_t width = 110;   uint16_t height = 9;
+    //END header variables
+    uint16_t x_max = 0, y_max = 0;
 
-    // Compute size of the first row in pixels
-    uint16_t line_size = get_line_size(f, buf, len);
-    uint16_t reset_x = start.x = get_reset_x(alignment, line_size, start.x);
-    //uint16_t saved_start_x = start.x = reset_x;
-    uint8_t font_height = font_sizes[size];
-	uint8_t extra_font_height = 0;
-    // Save initial start.y value to calculate vertical size
-    uint16_t saved_start_y = start.y;
-    uint16_t line_h = 0;
-    int16_t yy;
-
-    // Initialize the encoded buffer header
-    uint8_t num_color_bits = 2; // Tris for testing
-    encoded_buffer[COLOR_BITS_B0] = num_color_bits;
-    uint8_t max_colors = 1 << num_color_bits;
-    int encoded_index = COLOR_START_B9 + (max_colors * 2);
-
-    encoded_buffer[START_X_LSB_B1] = start.x & 0xFF;
-    encoded_buffer[START_X_MSB_B2] = (start.x >> 8) & 0xFF;
-    encoded_buffer[START_Y_LSB_B3] = start.y & 0xFF;
-    encoded_buffer[START_Y_MSB_B4] = (start.y >> 8) & 0xFF;
-    encoded_buffer[WIDTH_LSB_B5] = line_size & 0xFF;
-    encoded_buffer[WIDTH_MSB_B6] = (line_size >> 8) & 0xFF;
-    //encoded_buffer[HEIGHT_LSB_B7] = (font_height) & 0xFF;
-    //encoded_buffer[HEIGHT_MSB_B8] = (font_height >> 8) & 0xFF;
-
-
-    // Ensure we do not exceed the provided number of colors
-    for (int i = 0; i < max_colors && i < num_colors; i++) { 
-        encoded_buffer[COLOR_START_B9 + 2*i] = colors[i] & 0xFF;               //first color is used as background. corresponds to current_color==0
-        encoded_buffer[COLOR_START_B9 + 2*i + 1] = (colors[i] >> 8) & 0xFF;   //second color is used as text color. corresponds to current_color==1
+    if (width == 0){
+        x_max = CONFIG_SCREEN_WIDTH - start.x;
+    } else {
+        x_max = line_size = width;
+    }
+    if (height == 0){
+        y_max = CONFIG_SCREEN_HEIGHT - start.y;
+    } else {
+        y_max = height;
     }
 
-    uint16_t current_color = 0;  // Start with the background color (black)
-    uint8_t run_length = 0;
-    uint8_t color_shift_left = 8 - num_color_bits;
-    uint8_t max_run_length = (1 << color_shift_left) - 1;
-    //Font height comes from array font_size, but can be increased if we encounter characters that go lower then yo==0
-		// For each char in the string
+    //Process how many additional lines to be written  - get_line_size is not useful here
+    uint16_t reset_x = 0, reset_y = 0;
     for (unsigned i = 0; i < len; i++) {
         char c = buf[i];
         GFXglyph glyph = f.glyph[c - f.first];
-        //uint8_t *bitmap = f.bitmap;
-        //uint16_t bo = glyph.bitmapOffset;
-        //uint8_t w = glyph.width, h = glyph.height;
         uint8_t h = glyph.height;
-        //int8_t xo = glyph.xOffset, yo = glyph.yOffset;
         int8_t yo = glyph.yOffset;
-        //start.y = saved_start_y;
-
-
-        //uint8_t xx, bits = 0, bit = 0;
-        line_h = h;
-			
-			  //handle newline cr and wrap around later.
 
         // Handle newline and carriage return
-        if (c == '\n') {
-            if (alignment != TEXT_ALIGN_CENTER) {
-                start.x = reset_x;
-            } else {
-                line_size = get_line_size(f, &buf[i + 1], len - (i + 1));
-                start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
+        if (c == '\n' || c == '\r') {
+            if (c == '\r' && buf[i+1] == '\n') { //treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
+                i++;
             }
-       //   start.y += f.yAdvance;
-            continue;
-        } else if (c == '\r') {
-      //    start.x = reset_x;
+            reset_x = 0;
+            if ((reset_y += f.yAdvance) > y_max)
+                break;
+            additional_write_lines++;
             continue;
         }
 
         // Handle wrap around
-        if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH) {
-            line_size = get_line_size(f, buf, len);
-  //         start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
-  //         start.y += f.yAdvance;
+        if (reset_x + glyph.xAdvance > x_max) {
+            reset_x = 0;
+            if ((reset_y += f.yAdvance) > y_max)
+                break;
+            additional_write_lines++;
+            continue;
         }
-				//if the char goes lower then baseline (comma, y, etc) foresee extra lines.
-				if ((h+yo) > extra_font_height) {
-				     extra_font_height = (h+yo);
-				}
+        //if we don't have newline situation, then add up the glyphs
+        reset_x += glyph.xAdvance;
+        line_size = (reset_x > line_size) ? reset_x : line_size;
     }
-		//add total height to the buffer header:
-		encoded_buffer[HEIGHT_LSB_B7] = (font_height+extra_font_height) & 0xFF;
-    encoded_buffer[HEIGHT_MSB_B8] = ((font_height+extra_font_height) >> 8) & 0xFF;
-		
-    for (yy = -font_height; yy < extra_font_height; yy++) {
-        // For each char in the string
-        for (unsigned i = 0; i < len; i++) {
-            char c = buf[i];
-            GFXglyph glyph = f.glyph[c - f.first];
-            uint8_t *bitmap = f.bitmap;
+    start.x = get_reset_x(alignment, line_size, start.x);
 
-            uint16_t bo = glyph.bitmapOffset;
-            uint8_t w = glyph.width, h = glyph.height;
-            int8_t xo = glyph.xOffset, yo = glyph.yOffset;
-            start.y = saved_start_y;
+    uint8_t num_color_bits = 2; // Tris for testing - needs to be included in function call?
+    uint8_t max_colors = 1 << num_color_bits;
+    int encoded_index = COLOR_START_B9 + (max_colors * 2);  //define position of first encoded byte = end of header
+   
+    // Initialize the encoded buffer header    
+    encoded_buffer[COLOR_BITS_B0] = num_color_bits;
+    //add start position to header:
+    encoded_buffer[START_X_LSB_B1] = start.x & 0xFF;
+    encoded_buffer[START_X_MSB_B2] = (start.x >> 8) & 0xFF;
+    encoded_buffer[START_Y_LSB_B3] = start.y & 0xFF;
+    encoded_buffer[START_Y_MSB_B4] = (start.y >> 8) & 0xFF;
 
-            uint8_t xx, bits = 0, bit = 0;
-            line_h = h;
+    //set total height/width in the buffer header
+    encoded_buffer[WIDTH_LSB_B5] = line_size & 0xFF;
+    encoded_buffer[WIDTH_MSB_B6] = (line_size >> 8) & 0xFF;
+    encoded_buffer[HEIGHT_LSB_B7] = (total_font_height) & 0xFF;
+    encoded_buffer[HEIGHT_MSB_B8] = ((total_font_height) >> 8) & 0xFF;
+   
+    // Ensure we do not exceed the provided number of colors
+    for (int i = 0; i < max_colors && i < num_colors; i++) {
+        encoded_buffer[COLOR_START_B9 + 2*i] = colors[i] & 0xFF;                //first color is used as background. corresponds to current_color==0
+        encoded_buffer[COLOR_START_B9 + 2*i + 1] = (colors[i] >> 8) & 0xFF;     //second color is used as text color. corresponds to current_color==1
+    }
 
-            // Ensure we write the necessary amount of black pixels for lines without data
-			if (yy < yo || yy >= yo + h) {
-                // For characters that are fully black pixels (no data to draw)
-                for (xx = 0; xx < glyph.xAdvance; xx++) {
-                    if (current_color == 0) {
-                        run_length++;
-                        if (run_length == max_run_length) {
-                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
-                            run_length = 0;
-                        }
-                    } else {
-                        if (run_length > 0) {
-                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
-                        }
-                        current_color = 0;
-                        run_length = 1;
-                    }
+    //Encoding variables
+    uint16_t current_color = 0;  // Start with the background color (black)
+    uint16_t run_length = 0;
+    uint8_t color_shift_left = 8 - num_color_bits;
+    uint8_t max_run_length = (1 << color_shift_left) - 1;
+    uint8_t last_char_index = 0;          //keep last character index so we can process additional lines if needed
+
+    int16_t yy_max =  total_font_height - font_height;
+    if (combined_buffer_height > y_max){
+        yy_max = y_max - font_height;
+        combined_buffer_height = y_max;
+    }
+    reset_y = combined_buffer_height;
+   
+    for (uint8_t line = 0 ; line <= additional_write_lines ; line++) {
+        size_t start_char = last_char_index; //save so that we can start at the right character      
+        for (int16_t yy = -font_height; yy < yy_max; yy++) {
+            int16_t line_start_changed_x = -1;
+            int16_t line_end_changed_x = 0;
+            //Start a new encoded byte when a new line starts. That will make compare easier.
+            if (run_length > 0) {
+                //TEST COMPARE
+                temp_byte = (current_color << color_shift_left) | (run_length - 1);
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                run_length = 0;
+                current_color = 0;
+            }
+
+            uint16_t padding_before = 0;
+            if (alignment == TEXT_ALIGN_CENTER) {
+                padding_before = (line_size - get_line_size2(f, reset_x, &buf[start_char], len-start_char, x_max)) /2;
+            }
+            if (alignment == TEXT_ALIGN_RIGHT) {
+                padding_before = (line_size - get_line_size2(f, reset_x, &buf[start_char], len-start_char, x_max));
+            }
+            // Background padding before writing chars in case of center/right aligment
+            if (padding_before){
+                if (current_color != 0 && run_length > 0) { //Encode first if we still have run_length of other color.
+                    temp_byte = (current_color << color_shift_left) | (run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                    run_length = 0;
+                    current_color = 0;
                 }
-							
-            } else {
-							
-                // Draw bitmap and handle padding
-                int16_t bit_offset = (yy - yo) * w;  // Total bit offset
-                bo += bit_offset / 8; // For each line (that exists) go one byte further in the buffer
-                bits = bitmap[bo++];
-                bit = (bit_offset) % 8;
-                bits <<= bit;
+                run_length += padding_before;   //Add all padding
+                while (run_length >= max_run_length)
+                {
+                    temp_byte = (current_color << color_shift_left) | (max_run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
 
-                for (xx = 0; xx < glyph.xAdvance; xx++) {
-                    uint8_t pixel_color;
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < max_run_length) ? run_length_encoded : max_run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < max_run_length) ? run_length_encoded : max_run_length;
+    }
+}
 
-                    // Handle case where the pixel exceeds the width of the character and is padding
-                    if (xx >= w) {
-                        pixel_color = 0;  // This is black (background) padding pixel						
-                    } else {
-                        pixel_color = (bits & 0x80) >> 7;  // 1 for text (white), 0 for background (black)
+// Increase pixel_idx for the current byte
+temp_pixel_idx += max_run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE                    
+                    run_length -= max_run_length;
+                }
+            }
+            reset_x = 0;
+            for (unsigned i = start_char; i < len; i++) {
+                char c = buf[i];
+                GFXglyph glyph = f.glyph[c - f.first];
+                uint8_t *bitmap = f.bitmap;
+
+                uint16_t bo = glyph.bitmapOffset;
+                uint8_t w = glyph.width, h = glyph.height;
+                int8_t xo = glyph.xOffset, yo = glyph.yOffset;
+                //start.y = saved_start_y;
+
+                uint8_t xx, bits = 0, bit = 0;
+
+                if (c == '\n' || c == '\r') {                   //Newline
+                    if (c == '\r' && buf[i+1] == '\n') {      //treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
+                        i++;
                     }
+                    i++;
+                    last_char_index = i;
+                    break;
+                } else if (reset_x + glyph.xAdvance > x_max) {  //Wordwrap
+                    last_char_index = i;
+                    break;              
+                }
+                // Background padding: write "glyph.xAdvance" times black pixels for lines without data
+                if (yy < yo || yy >= yo + h) {
+                    if (current_color != 0 && run_length > 0) { //Encode if we still have run_length of other color.
+                        temp_byte = (current_color << color_shift_left) | (run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
 
-                    // Check if the pixel color is the same as the previous one
-                    if (pixel_color == current_color) {
-                        run_length++;
-                        if (run_length == max_run_length) {
-                            // Encode the run
-                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
-                            run_length = 0;
-                        }
-                    } else {
-                        // Encode the previous run if needed
-                        if (run_length > 0) {
-                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
-                        }
-                        current_color = pixel_color;
-                        run_length = 1;
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE                        
+                        run_length = 0;
+                        current_color = 0;
                     }
+                    run_length+= glyph.xAdvance;
+                    while (run_length >= max_run_length)
+                    {
+                        temp_byte = (current_color << color_shift_left) | (max_run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
 
-                    // Shift the bits left to process the next pixel
-                    bits <<= 1;
-                    //bit++;
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < max_run_length) ? run_length_encoded : max_run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < max_run_length) ? run_length_encoded : max_run_length;
+    }
+}
 
-                    // If bit%8 == 0
-                    if (!(++bit & 7)) {
+// Increase pixel_idx for the current byte
+temp_pixel_idx += max_run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                        run_length -= max_run_length;
+                    }
+                } else {
+                    // Draw bitmap and handle padding
+                    int16_t bit_offset = (yy - yo) * w;  // Total bit offset
+                    bo += bit_offset / 8; // For each line jump to the correct byte in bitmap
+                    bits = bitmap[bo++];
+                    bit = ((unsigned)bit_offset) % 8;
+                    bits <<= bit;
+
+                    for (xx = 0; xx < glyph.xAdvance; xx++) {
+                        uint8_t pixel_color;
+                        if ((xx < xo) || (xx >= (w + xo))) {   //Handle background padding: xoffset before char and "xAdvance - width" after char              
+                            pixel_color = 0;   // This is background padding, don't shift "bits"
+                        } else {
+                            pixel_color = (bits & 0x80) >> 7;  // Read bit - 1 for text (white), 0 for background (black)
+                            bits <<= 1;       // Shift the bits left to process the next pixel
+                            bit++;
+                        }
+
+                        // Check if the pixel color is the same as the previous one
+                        if (pixel_color == current_color) {
+                            run_length++;                     //Same pixel color, one more repetition
+                            if (run_length == max_run_length) {
+                                // Encode the run
+                                temp_byte = (current_color << color_shift_left) | (max_run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < max_run_length) ? run_length_encoded : max_run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < max_run_length) ? run_length_encoded : max_run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += max_run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                                run_length = 0;
+                            }
+                        } else {
+                            // Color Change - Encode the previous run if needed
+                            if (run_length > 0) {
+                                temp_byte = (current_color << color_shift_left) | (run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                            }
+                            current_color = pixel_color;
+                            run_length = 1;
+                        }
+                        if (!(bit & 7)) {
                         bits = bitmap[bo++];  // Load the next byte from the bitmap
                     }
                 }
             }
-            start.x += glyph.xAdvance;
+            reset_x += glyph.xAdvance;
         }
-        start.x = reset_x;
+       
+        //Add more background padding when line_size is longer then the characters written
+        if (line_size > (reset_x + padding_before)){
+            if (current_color != 0 && run_length > 0) { //Encode first if we still have run_length of other color.
+                temp_byte = (current_color << color_shift_left) | (run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                run_length = 0;
+                current_color = 0;
+            }
+            run_length += line_size - reset_x - padding_before;   //Add all padding at once
+            while (run_length >= max_run_length)
+            {
+                temp_byte = (current_color << color_shift_left) | (max_run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < max_run_length) ? run_length_encoded : max_run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < max_run_length) ? run_length_encoded : max_run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += max_run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                run_length -= max_run_length;
+            }
+        }
+         // Update the start and end values based on changes
+        if (line_start_changed_x != -1) { 
+            // Track the minimum (first) change X position across the line
+            if (buffer_start_changed_x == -1 || line_start_changed_x < buffer_start_changed_x) {
+                buffer_start_changed_x = line_start_changed_x;
+            }
+        }
+
+        // Always track the maximum (last) change X position across the line
+        if (line_end_changed_x > buffer_end_changed_x) {
+            buffer_end_changed_x = line_end_changed_x;
+        }
+    }
+        if (line < additional_write_lines) { //Prepare for next line - skip the last cycle so that encoded_buffer[HEIGHT_xSB_Bx] is correct
+            reset_y +=  f.yAdvance;
+            int8_t extra_pixel_lines = f.yAdvance - total_font_height; //There are empty pixel line(s) between the printed lines
+            //check vertical screen boundary
+            if (reset_y >= y_max){
+                yy_max = y_max - (f.yAdvance*(line + 1)) - font_height;
+                combined_buffer_height = y_max;
+            } else {
+                combined_buffer_height += extra_pixel_lines + yy_max + font_height;  //update height in header  
+            }
+            
+            int16_t line_start_changed_x = -1;
+            int16_t line_end_changed_x = 0;
+            //Encode remaining pixels, if not background
+            if (current_color != 0 && run_length > 0) { //Encode first if we still have run_length of other color.
+                temp_byte = (current_color << color_shift_left) | (run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                run_length = 0;
+                current_color = 0;
+            }
+            for (int i=0; i < extra_pixel_lines; i++){
+                run_length+= line_size;
+            }
+            while (run_length >= max_run_length)
+            {
+                temp_byte = (current_color << color_shift_left) | (max_run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < max_run_length) ? run_length_encoded : max_run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < max_run_length) ? run_length_encoded : max_run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += max_run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
+                run_length -= max_run_length;
+            }
+        }
+    }
+   
+    encoded_buffer[HEIGHT_LSB_B7] = (combined_buffer_height +0 ) & 0xFF;
+    encoded_buffer[HEIGHT_MSB_B8] = (combined_buffer_height >> 8) & 0xFF;
+   
+    // Encode the final run (if there are remaining pixels)
+    if (run_length > 0) {
+        temp_byte = (current_color << color_shift_left) | (run_length - 1);
+//TEST COMPARE
+uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+int16_t line_start_changed_x = -1;
+int16_t line_end_changed_x = 0;
+if (temp_byte != encoded_buffer[encoded_index]) {
+    // If colors differ, track the change
+    if (current_color != (encoded_buffer[encoded_index] >> color_shift_left)) {
+        // Track the first change
+        if (line_start_changed_x == -1) line_start_changed_x = temp_pixel_idx;
+        line_end_changed_x = temp_pixel_idx;
+    } else {
+        // If color is the same, adjust last change based on the minimum run length
+        line_end_changed_x = temp_pixel_idx + ((run_length_encoded < run_length) ? run_length_encoded : run_length);
+        if (line_start_changed_x == -1) line_start_changed_x = (run_length_encoded < run_length) ? run_length_encoded : run_length;
+    }
+}
+
+// Increase pixel_idx for the current byte
+temp_pixel_idx += run_length;
+encoded_pixel_idx += run_length_encoded;
+encoded_index++;
+
+// Handle the case where the encoded run length is shorter than the current run
+while (encoded_pixel_idx < temp_pixel_idx) {
+    uint8_t run_length_encoded = (encoded_buffer[encoded_index] & max_run_length) + 1;
+    encoded_pixel_idx += run_length_encoded;
+    encoded_index++;
+}
+//TEST COMPARE
     }
 
-    // Encode the final run (if there are remaining pixels)
+    // Calculate text size
+    point_t text_size = {0, 0};
+    text_size.x = line_size;
+    //text_size.x =encoded_index;
+    //text_size.y = (saved_start_y - start.y) + line_h;
+    text_size.y = combined_buffer_height;
+    
+char message2[100];
+sprintf(message2, "run_length: %i, current_color: %i \n\r", run_length, current_color); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);	
+   
+    return text_size;  
+}
+//END TRIS COMPARE FUNCTION
+
+
+
+//Tris.. trying inline function for encoding buffer
+
+//END Tris.. trying inline function for encoding buffer
+
+
+//Tris Test Printing to encoded buffer right away
+
+//updated with dynamic for- and background colors
+//Also test updated logic due to reseting to new byte for new line
+
+point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
+  alignment = 0;
+  
+    GFXfont f = fonts[size];
+    size_t len = strlen(buf);
+    uint8_t font_height = font_detail[size].font_size;
+    uint8_t total_font_height = font_detail[size].font_height;
+    uint16_t combined_buffer_height = total_font_height; //so we can easily return buffer height - does it already work for single line?
+    uint16_t line_size = 0;
+    uint8_t additional_write_lines = 0; //in case of newline or wrap around
+     
+    //If we don't have buffer width & height: automatic sizing to text
+    uint16_t width = 110; uint16_t height = 9;
+    uint16_t x_max = 0, y_max = 0;
+
+    if (width == 0) {
+        x_max = CONFIG_SCREEN_WIDTH - start.x;
+    } else {
+        x_max = line_size = width;
+    }
+    if (height == 0) {
+        y_max = CONFIG_SCREEN_HEIGHT - start.y;
+    } else {
+        y_max = height;
+    }
+
+    //Process how many additional lines to be written  - get_line_size is not useful here
+    uint16_t reset_x = 0, reset_y = 0;
+    for (unsigned i = 0; i < len; i++) {
+        char c = buf[i];
+        GFXglyph glyph = f.glyph[c - f.first];
+        uint8_t h = glyph.height;
+        int8_t yo = glyph.yOffset;
+
+        // Handle newline and carriage return
+        if (c == '\n' || c == '\r') {
+            if (c == '\r' && buf[i + 1] == '\n') {	//treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
+                i++;
+            }
+            reset_x = 0;
+            if ((reset_y += f.yAdvance) > y_max)
+                break;
+            additional_write_lines++;
+            continue;
+        }
+
+        // Handle wrap around
+        if (reset_x + glyph.xAdvance > x_max) {
+            reset_x = 0;
+            if ((reset_y += f.yAdvance) > y_max)
+                break;
+            additional_write_lines++;
+            continue;
+        }
+        //if we don't have newline situation, then add up the glyphs
+        reset_x += glyph.xAdvance;
+        line_size = (reset_x > line_size) ? reset_x : line_size;
+    }
+    start.x = get_reset_x(alignment, line_size, start.x);
+
+    const uint8_t num_color_bits = 2; // Tris for testing - needs to be included in function call?
+    const uint8_t max_colors = 1 << num_color_bits;
+    int encoded_index = COLOR_START_B9 + (max_colors * 2);  //define position of first data byte = end of header
+    
+    // Initialize the encoded buffer header    
+    encoded_buffer[COLOR_BITS_B0] = num_color_bits;
+    //add start position to header:
+    encoded_buffer[START_X_LSB_B1] = start.x & 0xFF;
+    encoded_buffer[START_X_MSB_B2] = (start.x >> 8) & 0xFF;
+    encoded_buffer[START_Y_LSB_B3] = start.y & 0xFF;
+    encoded_buffer[START_Y_MSB_B4] = (start.y >> 8) & 0xFF;
+
+    //set total height/width in the buffer header
+    encoded_buffer[WIDTH_LSB_B5] = line_size & 0xFF;
+    encoded_buffer[WIDTH_MSB_B6] = (line_size >> 8) & 0xFF;
+    encoded_buffer[HEIGHT_LSB_B7] = (total_font_height) & 0xFF;
+    encoded_buffer[HEIGHT_MSB_B8] = ((total_font_height) >> 8) & 0xFF;
+
+    // Ensure we do not exceed the provided number of colors
+    for (int i = 0; i < max_colors && i < num_colors; i++) {
+        encoded_buffer[COLOR_START_B9 + 2 * i] = colors[i] & 0xFF;
+        encoded_buffer[COLOR_START_B9 + 2 * i + 1] = (colors[i] >> 8) & 0xFF;
+    }
+
+    // Encoding variables
+    uint16_t current_color = 0;
+    uint8_t background_color = 0;
+    uint8_t foreground_color = 1;
+    uint16_t run_length = 0;
+    const uint8_t color_shift_left = 8 - num_color_bits;
+    const uint8_t max_run_length = (1 << color_shift_left) - 1;
+    uint8_t last_char_index = 0;          //keep last character index so we can process additional lines if needed
+
+    int16_t yy_max = total_font_height - font_height;
+    //keep yy repetitions within y_max height
+    if (combined_buffer_height > y_max) {
+        yy_max = y_max - font_height;
+        combined_buffer_height = y_max;
+    }
+    reset_y = combined_buffer_height;
+
+    for (uint8_t line = 0; line <= additional_write_lines; line++) {
+        size_t start_char = last_char_index; //save so that we can start at the right character after newline/wordwrap      
+        for (int16_t yy = -font_height; yy < yy_max; yy++) {
+            //Start a new encoded byte when a new line starts. That will make compare easier. This will slightly increase size.
+            if (run_length > 0) {
+                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                run_length = 0;
+                //TRIS CHECK IF NEXT LINE IS OK OR NEEDED
+                //current_color = background_color;
+            }
+            //END added code to start new byte if needed to compare
+
+            uint16_t padding_before = 0;
+            if (alignment == TEXT_ALIGN_CENTER) {
+                padding_before = (line_size - get_line_size2(f, reset_x, &buf[start_char], len - start_char, x_max)) / 2;
+            }
+            if (alignment == TEXT_ALIGN_RIGHT) {
+                padding_before = (line_size - get_line_size2(f, reset_x, &buf[start_char], len - start_char, x_max));
+            }
+            // Background padding before writing chars in case of center/right aligment
+            //TRIS - since we reset to a new bytewhen writing new pixel line
+            //I don't think we need to check for run_length > 0
+            if (padding_before) {
+             //   if (current_color != background_color && run_length > 0) { //Encode first if we still have run_length of other color.
+             //       encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+             //       run_length = 0;
+                    current_color = background_color;
+             //   }
+                run_length += padding_before;
+                while (run_length >= max_run_length) {
+                    encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                    run_length -= max_run_length;
+                }
+            }
+            reset_x = 0;
+            for (unsigned i = start_char; i < len; i++) {
+                char c = buf[i];
+                GFXglyph glyph = f.glyph[c - f.first];
+                uint8_t *bitmap = f.bitmap;
+
+                uint16_t bo = glyph.bitmapOffset;
+                uint8_t w = glyph.width, h = glyph.height;
+                int8_t xo = glyph.xOffset, yo = glyph.yOffset;
+
+                uint8_t xx, bits = 0, bit = 0;
+
+                if (c == '\n' || c == '\r') {                   //Newline
+                    if (c == '\r' && buf[i + 1] == '\n') {	      //treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
+                        i++;
+                    }
+                    i++;
+                    last_char_index = i;
+                    break;
+                } else if (reset_x + glyph.xAdvance > x_max) {  //Wordwrap
+                    last_char_index = i;
+                    break;
+                }
+                // Background padding: write "glyph.xAdvance" times black pixels for lines without data
+                if (yy < yo || yy >= yo + h) {
+                    if (current_color != background_color && run_length > 0) { //Encode if we still have run_length of other color.
+                        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                        run_length = 0;
+                        current_color = background_color;
+                    }
+                    run_length += glyph.xAdvance;
+                    while (run_length >= max_run_length)
+                    {
+                        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                        run_length -= max_run_length;
+                    }
+                } else {
+                    // Draw bitmap and handle padding
+                    int16_t bit_offset = (yy - yo) * w;  // Total bit offset
+                    bo += bit_offset / 8; // For each line jump to the correct byte in bitmap
+                    bits = bitmap[bo++];
+                    bit = ((unsigned)bit_offset) % 8;
+                    bits <<= bit;
+
+                    for (xx = 0; xx < glyph.xAdvance; xx++) {
+                        uint8_t pixel_color;
+                        if ((xx < xo) || (xx >= (w + xo))) {   //Handle background padding: xoffset before char and "xAdvance - width" after char               
+                            pixel_color = background_color;  					// This is background padding, don't shift "bits"
+                        } else {
+                            pixel_color = ((bits & 0x80) >> 7) ? foreground_color : background_color;
+                            bits <<= 1;       // Shift the bits left to process the next pixel
+                            bit++;
+                        }
+
+                        // Check if the pixel color is the same as the previous one
+                        if (pixel_color == current_color) {
+                            run_length++;                     //Same pixel color, one more repetition
+                            if (run_length == max_run_length) {
+                                // Encode the run
+                                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                                run_length = 0;
+                            }
+                        } else {
+                            // Color Change - Encode the previous run if needed
+                            if (run_length > 0) {
+                                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                            }
+                            current_color = pixel_color;
+                            run_length = 1;
+                        }
+                        if (!(bit & 7)) {
+                            bits = bitmap[bo++];  // Load the next byte from the bitmap
+                    }
+                }
+            }
+            reset_x += glyph.xAdvance;
+        }
+        
+        
+        // Handle background padding when line_size is longer then the characters written
+        if (line_size > (reset_x + padding_before)) {
+            if (current_color != background_color && run_length > 0) { //Encode first if we still have run_length of other color.
+                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                run_length = 0;
+                current_color = background_color;
+            }
+            run_length += line_size - reset_x - padding_before;   //Add all padding at once
+            while (run_length >= max_run_length) {
+                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                run_length -= max_run_length;
+            }
+        }
+    }
+    
+        if (line < additional_write_lines) { //Prepare for next line - skip the last cycle so that encoded_buffer[HEIGHT_xSB_Bx] is correct
+            reset_y += f.yAdvance;
+            int8_t extra_pixel_lines = f.yAdvance - total_font_height; //There are empty pixel line(s) between the printed lines
+            //check vertical screen boundary
+            
+            if (reset_y >= y_max) {
+                yy_max = y_max - (f.yAdvance * (line + 1)) - font_height;
+                combined_buffer_height = y_max;
+            } else {
+                combined_buffer_height += extra_pixel_lines + yy_max + font_height;  //update height in header  
+            }
+            
+            //Encode remaining pixels, if not background
+            if (current_color != background_color && run_length > 0) { //Encode first if we still have run_length of other color.
+                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                run_length = 0;
+                current_color = background_color;
+            }
+            for (int i = 0; i < extra_pixel_lines; i++) {
+                run_length += line_size;
+            }
+            while (run_length >= max_run_length) {
+                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                run_length -= max_run_length;
+            }
+        }
+    }
+    
+    encoded_buffer[HEIGHT_LSB_B7] = (combined_buffer_height + 0 ) & 0xFF;
+    encoded_buffer[HEIGHT_MSB_B8] = (combined_buffer_height >> 8) & 0xFF;
+    
+    // Final encoding of remaining pixels
     if (run_length > 0) {
         encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
     }
-//char message2[100];
-//sprintf(message2, "size of buffer+header: %i\n\r", encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);			
-	  
 		
     // Calculate text size
     point_t text_size = {0, 0};
     text_size.x = line_size;
-    text_size.y = (saved_start_y - start.y) + line_h;
-
-    return text_size;
+    text_size.y = combined_buffer_height;
+    
+    return text_size;  
 }
+
+
 
 //END Tris Test Printing to encoded buffer right away
 
@@ -829,39 +1585,55 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf)
 {
     GFXfont f = fonts[size];
-
     size_t len = strlen(buf);
-
+    uint8_t font_height = font_detail[size].font_size;
+    uint8_t total_font_height = font_detail[size].font_height;
+    
+    //uint16_t line_size = get_line_size(f, start.x, buf, len);
+    uint16_t x_max = CONFIG_SCREEN_WIDTH - start.x;
     uint16_t line_size = 0;
-	  uint8_t extra_font_height = 0;
-	  uint8_t font_height = 0;
-    for(unsigned i = 0; i < len && buf[i] != '\n' && buf[i] != '\r'; i++)
-    {
-        GFXglyph glyph = f.glyph[buf[i] - f.first];
-		    uint8_t h = glyph.height;
-		    int8_t  yo = glyph.yOffset;
-		    //find highest amount of pixels above y baseline
-		    if (-yo > font_height)
-		    {
-			      font_height = -yo;
-		    }
-        //find highest amount of pixels below y baseline
-        if ((h+yo) > extra_font_height) {
-            extra_font_height = (h+yo);
+  	//uint8_t additional_write_lines = 0; //in case of newline or wrap around
+
+    //Process how many additional lines to be written  - get_line_size is not useful here
+    uint16_t reset_x = 0;
+    for (unsigned i = 0; i < len; i++) {
+        char c = buf[i];
+        GFXglyph glyph = f.glyph[c - f.first];
+        uint8_t h = glyph.height;
+        int8_t yo = glyph.yOffset;
+
+        // Handle newline and carriage return
+        if (c == '\n' || c == '\r') {
+            if (c == '\r' && buf[i+1] == '\n') {	//treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
+                i++;
+            }
+            reset_x = 0;
+            //additional_write_lines++;
+            continue;
         }
-			  if ((line_size + glyph.xAdvance) < (132-start.x))
-            line_size += glyph.xAdvance;
-        else
-            break;
+
+        // Handle wrap around
+        if (reset_x + glyph.xAdvance > x_max) {
+            reset_x = 0;
+            //additional_write_lines++;
+            continue;
+        }
+        //if we don't have newline situation, then add up the glyphs
+        reset_x += glyph.xAdvance;
+        line_size = (reset_x > line_size) ? reset_x : line_size;	 
     }
 
-
-		uint16_t total_font_height = font_height+extra_font_height;
-    uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
-	  //clear screen behind the area where we will print the first line
-	  display_colorWindow565(reset_x, start.y-total_font_height+extra_font_height,line_size , total_font_height , 0xF8);
-	
-	  //TRIS FIX: Keeping saved_start_x for positioning new line
+    start.x = reset_x = get_reset_x(alignment, line_size, start.x);
+     
+    
+    
+    reset_x = get_reset_x(alignment, line_size, start.x);
+    //clear screen behind the area where we will print the first line
+    //display_colorWindow565(reset_x, start.y-font_height,line_size,total_font_height , 0xF8);
+    display_colorWindow565(reset_x, start.y-font_height,line_size,f.yAdvance , 0xF8);
+    //display_colorWindow565(1, 33,131, 9, 0xF8);
+  
+    //TRIS FIX: Keeping saved_start_x for positioning new line
     start.x = reset_x;
     // Save initial start.y value to calculate vertical size
     uint16_t saved_start_y = start.y;
@@ -870,7 +1642,7 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
      //if we have newline or wrap around, we need clear screen behind it fist
      bool writeanotherline = 0;
     /* For each char in the string */
-	  for(unsigned i = 0; i < len; i++)
+    for(unsigned i = 0; i < len; i++)
       {
         char c = buf[i];
         GFXglyph glyph = f.glyph[c - f.first];
@@ -881,8 +1653,8 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
         int8_t xo = glyph.xOffset,
                yo = glyph.yOffset;
         uint8_t xx, yy, bits = 0, bit = 0;
-        line_h = h;
-		
+        line_h = total_font_height;
+    
 
         // Handle newline and carriage return
         if (c == '\n')
@@ -893,12 +1665,14 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
             }
             else
             {
-                line_size = get_line_size(f, &buf[i+1], len-(i+1));
+                //Move up, before line size  
+                start.x = get_reset_x(alignment, line_size, reset_x);
+                line_size = get_line_size(f, start.x, &buf[i+1], len-(i+1));
                 //TRIS - FIX: replaced start.x by reset_x, which contains the intial value
-                start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
+                //start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
             }
             start.y += f.yAdvance;
-		        writeanotherline = 1;
+            writeanotherline = 1;
             continue;
         }
         else if (c == '\r')
@@ -911,18 +1685,20 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
         //if ((start.x + glyph.xAdvance) > (CONFIG_SCREEN_WIDTH - reset_x))  //bug fix?
         if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
         {
-            // Compute size of the first row in pixels
-            //line_size = get_line_size(f, buf, len);
-					   line_size = get_line_size(f, &buf[i], len-(i));
+             //Move up, before line size  
+             start.x = get_reset_x(alignment, line_size, reset_x);
+             line_size = get_line_size(f, start.x, &buf[i], len-(i));
             //TRIS - FIX: replaced start.x by reset_x, which contains the intial value
-            start.x = reset_x = get_reset_x(alignment, line_size, reset_x); 
+            //start.x = reset_x = get_reset_x(alignment, line_size, reset_x); 
             start.y += f.yAdvance;
-		        writeanotherline = 1;
+            writeanotherline = 1;
+ 
+          
         }
-		
+    
         if (writeanotherline) {
-            display_colorWindow565(reset_x, start.y-total_font_height+extra_font_height,line_size, total_font_height , 0xF8);
-			      writeanotherline = 0;
+            display_colorWindow565(reset_x, start.y - font_height,line_size,f.yAdvance , 0xF8);
+            writeanotherline = 0;
         }
 
         // Draw bitmap
@@ -963,6 +1739,7 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
     return text_size;
 }
 //END TRIS version with wiping screen behind the buffer characters
+//END TRIS version with wiping screen behind the buffer characters
 
 
 
@@ -972,12 +1749,12 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
 {
     GFXfont f = fonts[size];
     size_t len = strlen(buf);
-	
+  
     // Compute size of the first row in pixels
-    uint16_t line_size = get_line_size(f, buf, len);
+    uint16_t line_size = get_line_size(f, start.x, buf, len);
     uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
     start.x = reset_x;
-	  uint8_t font_height = font_sizes[size];
+    uint8_t font_height = font_detail[size].font_size;
 
     // Save initial start.y value to calculate vertical size
     uint16_t saved_start_y = start.y;
@@ -993,7 +1770,7 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         uint16_t bo = glyph.bitmapOffset;
         uint8_t w = glyph.width, h = glyph.height;
         int8_t xo = glyph.xOffset,
-        			yo = glyph.yOffset;
+              yo = glyph.yOffset;
         uint8_t xx, yy, bits = 0, bit = 0;
         line_h = h;
 
@@ -1006,7 +1783,7 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
             }
             else
             {
-                line_size = get_line_size(f, &buf[i + 1], len - (i + 1));
+                line_size = get_line_size(f, start.x, &buf[i + 1], len - (i + 1));
                 start.x = reset_x = get_reset_x(alignment, line_size, start.x);
             }
             start.y += f.yAdvance;
@@ -1022,9 +1799,9 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         if (start.x + glyph.xAdvance > buffer_width)
         {
             // Compute size of the first row in pixels
-					
-					  //BUG?? line_size does not take start.x into account..
-            line_size = get_line_size(f, buf, len);
+          
+            //BUG?? line_size does not take start.x into account..
+            line_size = get_line_size(f, start.x, buf, len);
             start.x = reset_x = get_reset_x(alignment, line_size, start.x);
             start.y += f.yAdvance;
         }
@@ -1055,11 +1832,11 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         point_t pos;
                         pos.x = start.x + xo + xx;
                         pos.y = start.y + yo + yy;
-					
-						            uint16_t buffer_idx = pos.y * buffer_width + pos.x;
+          
+                        uint16_t buffer_idx = pos.y * buffer_width + pos.x;
                         // Store the RGB565 color in the buffer
-												//char message2[100];
-											  //sprintf(message2, "pos.x:%i, pos.y:%i, idx:%i \n\r", pos.x,pos.y, buffer_idx); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+                        //char message2[100];
+                        //sprintf(message2, "pos.x:%i, pos.y:%i, idx:%i \n\r", pos.x,pos.y, buffer_idx); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
                         smeter_buffer[buffer_idx] = rgb565;
                     }
                 }
@@ -1087,8 +1864,8 @@ void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encod
 
     uint16_t current_color = smeter_buffer[0];  // Starting color to track
     uint8_t run_length = 1;  // Start with the first pixel already counted
-	
-	  uint8_t color_to_bits[2] = {0b00, 0b01};  // Only black (0x0000) and white (0xFFFF) are used
+  
+    uint8_t color_to_bits[2] = {0b00, 0b01};  // Only black (0x0000) and white (0xFFFF) are used
 
     for (int j = 1; j < buffer_size; j++) {  // iterate over each pixel
         if (smeter_buffer[j] == current_color) {
@@ -1107,12 +1884,12 @@ void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encod
             run_length = 1;
         }
     }
-		// Encode the final run (if there are remaining pixels)
+    // Encode the final run (if there are remaining pixels)
     if (run_length > 0) {
-				encoded_buffer[encoded_index++] = (color_to_bits[current_color == 0x0000 ? 0 : 1] << 6) | (run_length-1);
-		}
-		  			char message2[50];
-		//sprintf(message2, "encoded_index(nr of bytes): %i\n\r", encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+        encoded_buffer[encoded_index++] = (color_to_bits[current_color == 0x0000 ? 0 : 1] << 6) | (run_length-1);
+    }
+            char message2[50];
+    //sprintf(message2, "encoded_index(nr of bytes): %i\n\r", encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
 }
 //END - Tris New function encode_buffer - encode from intermediary uncompressed buffer for s_meter test
 
@@ -1128,9 +1905,9 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
     size_t len = strlen(buf);
 
     // Compute size of the first row in pixels
-    uint16_t line_size = get_line_size(f, buf, len);
+    uint16_t line_size = get_line_size(f, start.x, buf, len);
     uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
-	  //TRIS FIX: Keeping saved_start_x for positioning new line
+    //TRIS FIX: Keeping saved_start_x for positioning new line
     start.x = reset_x;
     // Save initial start.y value to calculate vertical size
     uint16_t saved_start_y = start.y;
@@ -1159,8 +1936,8 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
           }
           else
           {
-            line_size = get_line_size(f, &buf[i+1], len-(i+1));
-						//TRIS - FIX: replaced start.x by reset_x, that contains the intial value
+            line_size = get_line_size(f, start.x, &buf[i+1], len-(i+1));
+            //TRIS - FIX: replaced start.x by reset_x, that contains the intial value
             start.x = reset_x = get_reset_x(alignment, line_size, reset_x);
           }
           start.y += f.yAdvance;
@@ -1174,13 +1951,13 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
 
         // Handle wrap around
         //if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)  //bug?
-				if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
+        if (start.x + glyph.xAdvance > CONFIG_SCREEN_WIDTH)
         {
             // Compute size of the first row in pixels
-					  //BUG, the next line_length is the remainer of the pixels..some alignments will break
-            //line_size = get_line_size(f, buf, len);
-					  line_size = get_line_size(f, &buf[i], len-(i));
-					  //TRIS - FIX: replaced start.x by reset_x, that contains the intial value
+            //BUG, the next line_length is the remainer of the pixels..some alignments will break
+            //line_size = get_line_size(f, start.x, buf, len);
+            line_size = get_line_size(f, start.x, &buf[i], len-(i));
+            //TRIS - FIX: replaced start.x by reset_x, that contains the intial value
             start.x = reset_x = get_reset_x(alignment, line_size, reset_x); 
             start.y += f.yAdvance;
         }
@@ -1218,8 +1995,8 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
     }
     // Calculate text size
     point_t text_size = {0, 0};
-		
-	  //only correct for maximum 1 line
+    
+    //only correct for maximum 1 line
     text_size.x = line_size;
     text_size.y = (saved_start_y - start.y) + line_h;
     return text_size;
@@ -1461,9 +2238,9 @@ void gfx_drawSmeter(point_t start, uint16_t width, uint16_t height, rssi_t rssi,
     int16_t s_level;
     if (rssi >= -53) { s_level = 12; }           // rssi >= -53dB set s_level to "11" (S9 + 20 dB)
     else if (rssi >= -73) {
-        s_level =  (rssi_t)(163 + rssi) / 10; 	// Increase s_level /10dB instead of /6dB for > S9
+        s_level =  (rssi_t)(163 + rssi) / 10;   // Increase s_level /10dB instead of /6dB for > S9
     }
-    else if (rssi < -121) { s_level = 0; }   	// s_level should not be negative + avoid overflow if rssi (int32_t) =< -196741
+    else if (rssi < -121) { s_level = 0; }     // s_level should not be negative + avoid overflow if rssi (int32_t) =< -196741
     else {
         s_level =  (rssi_t)(127 + rssi) / 6;    // 6dB increase per S-Point
     }
@@ -1545,9 +2322,9 @@ void gfx_drawSmeterLevel(point_t start, uint16_t width, uint16_t height, rssi_t 
     int16_t s_level;
     if (rssi >= -53) { s_level = 11; }          // rssi >= -53dB set s_level to "11" (S9 + 20 dB)
     else if (rssi >= -73) {
-        s_level =  (rssi_t)(163 + rssi) / 10; 	// Increase s_level /10dB instead of /6dB for > S9
+        s_level =  (rssi_t)(163 + rssi) / 10;   // Increase s_level /10dB instead of /6dB for > S9
     }
-    else if (rssi < -121) { s_level = 0; }   	// s_level should not be negative + avoid overflow if rssi (int32_t) =< -196741
+    else if (rssi < -121) { s_level = 0; }     // s_level should not be negative + avoid overflow if rssi (int32_t) =< -196741
     else {
         s_level =  (rssi_t)(127 + rssi) / 6;    // 6dB increase per S-Point
     }
