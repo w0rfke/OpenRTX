@@ -1,7 +1,7 @@
 Dependencies for Project 'STM32F4', Target 'STM32F4': (DO NOT MODIFY !)
 CompilerVersion: 6210000::V6.21::ARMCLANG
-F (startup_stm32f401xe.s)(0x674B89E3)(--target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -masm=auto  -Wa,armasm,--diag_suppress=A1950W -c-gdwarf-4-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-Wa,armasm,--pd,"__UVISION_VERSION SETA 539" -Wa,armasm,--pd,"_RTE_ SETA 1" -Wa,armasm,--pd,"STM32F401xE SETA 1" -Wa,armasm,--pd,"_RTE_ SETA 1"-o stm32f4/startup_stm32f401xe.o)
-F (../Core/Src/main.c)(0x6766A0BB)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/main.o -MD)
+F (startup_stm32f401xe.s)(0x677705E4)(--target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -masm=auto  -Wa,armasm,--diag_suppress=A1950W -c-gdwarf-4-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-Wa,armasm,--pd,"__UVISION_VERSION SETA 539" -Wa,armasm,--pd,"_RTE_ SETA 1" -Wa,armasm,--pd,"STM32F401xE SETA 1" -Wa,armasm,--pd,"_RTE_ SETA 1"-o stm32f4/startup_stm32f401xe.o)
+F (../Core/Src/main.c)(0x6779BDBF)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/main.o -MD)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal.h)(0x6722739E)
 I (..\Core\Inc\stm32f4xx_hal_conf.h)(0x67366C7C)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rcc.h)(0x6722739E)
@@ -51,14 +51,14 @@ I (..\..\openrtx\include\core\state.h)(0x6746E089)
 I (..\..\openrtx\include\core\datatypes.h)(0x6745E100)
 I (..\..\openrtx\include\core\settings.hh.\..\openrtx\include\core\cps.h)(0x00000000)
 I (..\..\openrtx\include\rtx\rtx.hi.\..\openrtx\include\core\gps.h)(0x00000000)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x656A0472)
 I (..\..\openrtx\include\interfaces\keyboard.h)(0x6745E100)
 I (..\..\openrtx\include\core\ui.h)(0x6745E100)
 I (..\..\openrtx\include\interfaces\delays.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdlib.h)(0x656A0472)
-F (../Core/Src/stm32f4xx_it.c)(0x67366C7C)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/stm32f4xx_it.o -MD)
+F (../Core/Src/stm32f4xx_it.c)(0x677704FF)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/stm32f4xx_it.o -MD)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal.h)(0x6722739E)
 I (..\Core\Inc\stm32f4xx_hal_conf.h)(0x67366C7C)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rcc.h)(0x6722739E)
@@ -227,7 +227,7 @@ I (C:\Keil_v5\ARM\ARMCLANG\include\stdbool.h)(0x656A0472)
 I (..\..\openrtx\include\core\datetime.h)(0x6745E100)
 F (..\..\openrtx\include\interfaces\display.h)(0x6745E104)()
 F (..\..\openrtx\include\interfaces\keyboard.h)(0x6745E100)()
-F (..\..\openrtx\src\core\graphics.c)(0x67710F0F)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/graphics.o -MD)
+F (..\..\openrtx\src\core\graphics.c)(0x677A5467)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/graphics.o -MD)
 I (..\..\openrtx\include\interfaces\display.h)(0x6745E104)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x656A0472)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdbool.hh\Core\Inc\ST7735S.h)(0x00000000)
@@ -261,7 +261,7 @@ I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pwr_ex.h)(0x6722739E)
 I (..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_uart.h)(0x6722739E)
 I (..\..\openrtx\include\interfaces\platform.h)(0x6745FE47)
 I (..\..\openrtx\include\core\datetime.h)(0x6745E100)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\core\datatypes.h)(0x6745E100)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x656A0472)
@@ -296,7 +296,7 @@ I (..\..\openrtx\include\fonts\tris\Proggy 5x7.h)(0x67616C0F)
 I (..\..\openrtx\include\fonts\symbols\Symbols5pt7b.h)(0x6745E100)
 I (..\..\openrtx\include\fonts\symbols\Symbols6pt7b.h)(0x6745E100)
 I (..\..\openrtx\include\fonts\symbols\Symbols8pt7b.h)(0x6745E100)
-F (..\..\openrtx\include\core\graphics.h)(0x67521289)()
+F (..\..\openrtx\include\core\graphics.h)(0x6771C982)()
 F (..\..\openrtx\src\ui\default\ui.c)(0x67497DD5)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -funsigned-char -fshort-enums -fshort-wchar-gdwarf-4 -O2 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I ../../openrtx/include/interfaces -I ../../openrtx/include/core -I ../../openrtx/include/fonts/adafruit -I ../../openrtx/include/fonts/symbols -I ../../openrtx/include/ui -I ../../openrtx/include/rtx -I ../../openrtx/include/calibration -I ../../platform/mcu/STM32F4xx/drivers/ -I ../../openrtx/include/peripherals -I ../../platform/targets/A36Plus/ -I ../../platform/drivers/NVM -I ../../openrtx/include/fonts/tris -I ../Core/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc -I ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I ../Drivers/CMSIS/Include-I./RTE/_STM32F4-IC:/Users/Tris/AppData/Local/Arm/Packs/ARM/CMSIS/6.1.0/CMSIS/Core/Include-D__UVISION_VERSION="539" -D_RTE_ -DSTM32F401xE -D_RTE_ -DUSE_FULL_LL_DRIVER -DUSE_HAL_DRIVER -DSTM32F401xE-o stm32f4/ui.o -MD)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x656A0472)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdint.h)(0x656A0472)
@@ -310,7 +310,7 @@ I (..\..\openrtx\include\core\settings.hh.\..\openrtx\include\core\cps.h)(0x0000
 I (..\..\openrtx\include\rtx\rtx.hi.\..\openrtx\include\core\gps.h)(0x00000000)
 I (..\..\openrtx\include\core\datetime.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x656A0472)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (..\..\openrtx\include\interfaces\keyboard.h)(0x6745E100)
 I (..\..\openrtx\include\core\event.he.\..\openrtx\include\core\ui.h)(0x00000000)
@@ -367,7 +367,7 @@ I (..\..\openrtx\include\core\datatypes.h)(0x6745E100)
 I (..\..\openrtx\include\core\settings.hh.\..\openrtx\include\core\cps.h)(0x00000000)
 I (..\..\openrtx\include\rtx\rtx.hi.\..\openrtx\include\core\gps.h)(0x00000000)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x656A0472)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (..\..\openrtx\include\interfaces\keyboard.h)(0x6745E100)
 I (..\..\openrtx\include\core\event.he.\..\openrtx\include\core\ui.h)(0x00000000)
@@ -415,7 +415,7 @@ I (..\..\openrtx\include\core\state.h)(0x6746E089)
 I (..\..\openrtx\include\core\settings.ho.\..\openrtx\include\core\cps.h)(0x00000000)
 I (..\..\openrtx\include\rtx\rtx.hi.\..\openrtx\include\core\gps.h)(0x00000000)
 I (..\..\openrtx\include\core\datetime.h)(0x6745E100)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (..\..\openrtx\include\interfaces\keyboard.h)(0x6745E100)
 I (..\..\openrtx\include\core\event.he.\..\openrtx\include\core\ui.h)(0x00000000)
@@ -788,7 +788,7 @@ I (..\..\openrtx\include\interfaces\delays.h)(0x6745E100)
 I (..\..\openrtx\include\interfaces\cps_io.h)(0x6745E100)
 I (..\..\openrtx\include\core\cps.h)(0x6745E100)
 I (..\..\openrtx\include\core\datatypes.ho.\..\openrtx\include\rtx\rtx.h)(0x00000000)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x656A0472)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x656A0472)
@@ -836,7 +836,7 @@ I (..\..\openrtx\include\rtx\rtx.hi.\..\openrtx\include\core\gps.h)(0x00000000)
 I (..\..\openrtx\include\core\datetime.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stddef.h)(0x656A0472)
 I (..\..\openrtx\include\core\threads.h)(0x6745E104)
-I (..\..\openrtx\include\core\graphics.h)(0x67521289)
+I (..\..\openrtx\include\core\graphics.h)(0x6771C982)
 I (..\..\openrtx\include\fonts\symbols\symbols.h)(0x6745E100)
 I (C:\Keil_v5\ARM\ARMCLANG\include\stdio.h)(0x656A0472)
 I (..\..\openrtx\include\interfaces\platform.h)(0x6745FE47)

@@ -1,4 +1,4 @@
-;*******************************************************************************
+;/*******************************************************************************
 ;* File Name          : startup_stm32f401xe.s
 ;* Author             : MCD Application Team
 ;* Description        : STM32F401xe devices vector table for MDK-ARM toolchain. 
@@ -27,7 +27,7 @@
 ; Tailor this value to your application needs
 ; <h> Stack Configuration
 ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
-; </h>
+; </h>*/
 
 Stack_Size		EQU     0x400
 

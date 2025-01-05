@@ -68,6 +68,8 @@ static rgb565_t _true2highColor(color_t true_color)
     return high_color;
 }
 
+    uint16_t static_buffer2[2600] = {0};
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -170,6 +172,7 @@ int main(void)
     display_colorWindow565(0, 0, 132, 128 , 0x00);
     //ui_drawSplashScreen();
     
+
     
     
     #if CONFIG_SCREEN_HEIGHT > 64
@@ -186,7 +189,7 @@ int main(void)
     
 
     
-/*    //yellow orange gradient
+    //yellow orange gradient
     color_t s[11] = {
     {0xff, 0xff, 0xff, 255},
     {0xff, 0xfe, 0xf7, 255},
@@ -200,7 +203,7 @@ int main(void)
     {0xff, 0x66, 0x66, 255},
     {0xff, 0x66, 0x66, 255}
     };
-*/
+
     volatile bool flag = true; //so that forever while loops does not get optimized
         
     uint16_t *smeter_buffer[11]= {NULL};  // Array of 11 pointers, initially NULL
@@ -232,6 +235,17 @@ int main(void)
     start.x=1;
     start.y=10; 
     
+    
+    start.x=1;
+    start.y=111;   
+    rssi_t rssi = -52  ; //typedef int32_t rssi_t;
+
+    uint8_t squelch = 2; //0-15??
+    uint8_t volume=20; //0-255? mic level
+    
+    //gfx_drawSmeter(start, (CONFIG_SCREEN_WIDTH-2), 14, rssi, squelch, volume, true, yellow_fab413);
+    //while(1);
+    
 
     
 
@@ -253,7 +267,7 @@ int main(void)
   }  
 */
 
-
+   /*
 //White red
     color_t s[11] = {
     {0xff, 0xff, 0xff, 255},
@@ -268,6 +282,7 @@ int main(void)
     {0xf2, 0x3a, 0x3a, 255},
     {0xf2, 0x3a, 0x3a, 255}
     };
+*/
 
   /*  
 s[0] = (color_t) {0xff, 0xff, 0xff, 255};
@@ -289,12 +304,18 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
       smeter_buffer[i] = (uint16_t*)malloc(s_meter_widths[i] * 7 * sizeof(uint16_t));  // 16-bit color per pixel, 7px high
     }
 
+
     //prepare encoded buffer for the smeter..also used for other tests below, as it is big enough
     //for(int i = 0; i<11; i++) {
     //  encoded_buffer[i] = (uint8_t*)malloc(510);  // 16-bit color per pixel, 7px high
     //}
-    encoded_buffer[0] = (uint8_t*)malloc(510);  // 16-bit color per pixel, 7px high
-    decoded_buffer[0] = (uint16_t*)malloc(2600);  // 16-bit color per pixel, 7px high
+    //encoded_buffer[0] = (uint8_t*)malloc(510);  // 16-bit color per pixel, 7px high
+    uint8_t static_buffer[520] = {0};
+    encoded_buffer[0] = static_buffer;
+    
+    //uint16_t static_buffer2[2600] = {0}; move to global
+    //decoded_buffer[0] = (uint16_t*)malloc(2600);  // 16-bit color per pixel, 7px high
+    decoded_buffer[0] = static_buffer2;  // 16-bit color per pixel, 7px high
     
     //function to create all 11 smeter blocks to an uncmpressed buffer
     //gfx_smeterFillBuff(smeter_buffer);
@@ -359,14 +380,22 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     sprintf(text, "A/ 430.8815#@\n$^)g*j//<>j*AB\n1");
     //sprintf(text, "Rx 430.8815");
     //sprintf(text, "A/ 430.882121");
+ 
 
+    encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    display_drawEncodedBuffer(encoded_buffer[0]);
+    sprintf(text, "A/ 431.8815#@\n$^)g*j//<>j*AB\n1");
+    gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    
+    
+ 
+   /*
     uint32_t tickstart = HAL_GetTick();
     for (int i=0; i<100; i++){
         encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
     }
     uint32_t tickend = HAL_GetTick();
     sprintf(message2, "Encoding Buffer 100x: %i ms\n\r", tickend - tickstart); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-    
 
     tickstart = HAL_GetTick();
     for (int i=0; i<100; i++){
@@ -400,9 +429,7 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
 //
                                                     
     //gfx_printError("test", 0);
-
-      while(1)
-        ;
+ */
     
     start.y=120;
     //gfx_printBuffer2(start, FONT_SIZE_5PT, TEXT_ALIGN_LEFT, text_color, text);
@@ -439,10 +466,11 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     gfx_printtoBufferCRLE(start, FONT_SIZE_8PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
     display_drawEncodedBuffer(encoded_buffer[0]); 
     
+     
     start.y=100;
     start.x=20;
     //uint16_t colors[] = {0x0000, 0xFFFF};
-    sprintf(text, "435.5250");
+    sprintf(text, "435.52500");
     gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
     display_drawEncodedBuffer(encoded_buffer[0]);    
     
@@ -452,6 +480,8 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     sprintf(text, "FM");
     gfx_printtoBufferCRLE(start, FONT_SIZE_5PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);  
     display_drawEncodedBuffer(encoded_buffer[0]);
+    
+
     
     start.y=114;
     start.x=119;  
@@ -489,8 +519,8 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
         start.y=116;
         start.x=3;
         for (int j=1; j<16; j++){
-            drawSquelchBars(start, j);
-            HAL_Delay(50);
+            //drawSquelchBars(start, j);
+            //HAL_Delay(50);
         }
 /*
         //first try squelch bar scaled to smeter
@@ -514,7 +544,9 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
           if (i<10) {
             display_drawBuffer(start.x+s_meter_widths[i]+1, start.y, s_meter_widths[i+1], 7, smeter_buffer[i+1]);
           }
-          start.x-=s_meter_widths[i-1]+1;
+          if (i > 0) {
+            start.x -= s_meter_widths[i - 1] + 1;  // Only access s_meter_widths[i - 1] if i > 0
+          }
           HAL_Delay(100);
         }
         gfx_smeter_all(start, s, 0, smeter_buffer);
@@ -569,10 +601,10 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     //point_t start;
     start.x=1;
     start.y=111;   
-    rssi_t rssi = -52  ; //typedef int32_t rssi_t;
+ //   rssi_t rssi = -52  ; //typedef int32_t rssi_t;
 
-    uint8_t squelch = 2; //0-15??
-    uint8_t volume=20; //0-255? mic level
+//    uint8_t squelch = 2; //0-15??
+//    uint8_t volume=20; //0-255? mic level
     
     //gfx_drawSmeter(start, (CONFIG_SCREEN_WIDTH-2), 14, rssi, squelch, volume, true, yellow_fab413);
 

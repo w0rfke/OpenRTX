@@ -266,6 +266,7 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf, uint16_t *smeter_buffer, uint16_t buffer_width);
 
 point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors);
+point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors);
 																 
 void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encoded_buffer);
 
