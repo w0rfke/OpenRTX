@@ -139,5 +139,8 @@ static inline void sendShort(uint16_t val);  // Function to send a 16-bit value 
 static inline void sendCommand(uint8_t command);  // Function to send a command
 static inline void sendData(uint8_t data);  // Function to send data
 
+//debug functions
+void display_contents_EncodedBuffer(uint8_t *buffer);
+
 
 #endif  // ST7735S_H

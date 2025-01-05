@@ -383,9 +383,17 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
  
 
     encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
-    display_drawEncodedBuffer(encoded_buffer[0]);
+    //display_contents_EncodedBuffer(encoded_buffer[0]);
+    
+    //display_drawEncodedBuffer(encoded_buffer[0]);
     sprintf(text, "A/ 431.8815#@\n$^)g*j//<>j*AB\n1");
     gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    
+    encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    display_drawEncodedBuffer(encoded_buffer[0]);
+    //display_contents_EncodedBuffer(encoded_buffer[0]);
+    
+    
     
     
  

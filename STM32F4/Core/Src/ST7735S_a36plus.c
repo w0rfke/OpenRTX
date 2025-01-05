@@ -468,3 +468,59 @@ void display_setBacklightLevel(uint8_t level)
     uint32_t pwmLevel = (level / 100.0) * 255;
     //TIMER_CH0CV(TIMER16) = pwmLevel;
 }
+
+
+//Debug functions
+
+void display_contents_EncodedBuffer(uint8_t *buffer) {
+    // Read header information
+    const uint8_t num_color_bits = buffer[COLOR_BITS_B0];
+    const point_t start = {
+        .x = *(uint16_t*)&buffer[START_X_LSB_B1],
+        .y = *(uint16_t*)&buffer[START_Y_LSB_B3]
+    };
+    const uint16_t width = *(uint16_t*)&buffer[WIDTH_LSB_B5];
+    const uint16_t height = *(uint16_t*)&buffer[HEIGHT_LSB_B7];
+    const uint8_t max_colors = 1 << num_color_bits;
+    const size_t num_pixels = width * height; // Total number of pixels to process
+    
+    // Initialize color map from the header
+    uint16_t color_map[max_colors];
+    const uint8_t *color_data = &buffer[COLOR_START_B9];
+    for (int i = 0; i < max_colors; i++) {
+        color_map[i] = *(uint16_t*)&color_data[i * 2];
+    }
+    
+    int encoded_index = COLOR_START_B9 + (max_colors * 2);
+    
+    // Calculate the bit masks based on the number of color bits
+    uint8_t run_length_shift = 8 - num_color_bits;
+    
+    // Print header information
+    char message[100];
+    sprintf(message, "Image size: %dx%d (%d pixels)\nNumber of color bits: %d\r\n", 
+            width, height, num_pixels, num_color_bits);
+    HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+    
+    // Keep track of processed pixels
+    uint32_t pixels_processed = 0;
+    
+    // Process until we've handled all pixels
+    while (pixels_processed < num_pixels) {
+        uint8_t byte = buffer[encoded_index];
+        uint8_t color_bits = byte >> run_length_shift;           // Extract the color bits
+        uint8_t run_length = (byte & ((1 << run_length_shift) - 1)) + 1;   // Extract the run length bits and adjust
+        uint16_t color = color_map[color_bits];
+        
+        // Format: byte_number(3chars) color(hex) run_length
+        sprintf(message, "%03d %04d 0x%04X %d\r\n", encoded_index - 17, pixels_processed, color, run_length);
+        HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+        
+        pixels_processed += run_length;
+        encoded_index++;
+    }
+    
+    // Print summary
+    sprintf(message, "\nTotal pixels processed: %u\nBytes read: %d\n", pixels_processed, encoded_index - (COLOR_START_B9 + (max_colors * 2)));
+    HAL_UART_Transmit(&huart1, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+}
