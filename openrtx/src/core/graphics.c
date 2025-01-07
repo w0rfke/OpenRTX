@@ -672,85 +672,67 @@ typedef struct {
 
 
 void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bits) {
-
+    uint16_t encoded_index = *state->encoded_index;
+    uint16_t current_pixel_idx = *state->current_pixel_index;
     const uint8_t color_shift_left = 8 - num_color_bits;
-    const uint8_t max_run_length = (1 << color_shift_left);
-    // Read the color/pixel repetition from the encoded buffer
-    uint8_t colorbits = state->encoded_buffer[*state->encoded_index] >> color_shift_left;
-    uint16_t run_length_encoded = (state->encoded_buffer[*state->encoded_index] & ((1 << color_shift_left) - 1)) + 1;
-    //current run_length should never be higher then max_run_length - higher runlengths are handled by a while loop in parent function
+    //const uint8_t max_run_length = (1 << color_shift_left);
+    
+    uint8_t colorbits = state->encoded_buffer[encoded_index] >> color_shift_left;
+    uint16_t run_length_encoded = (state->encoded_buffer[encoded_index] & ((1 << color_shift_left) - 1)) + 1;
+    
     const uint16_t run_length = (*state->run_length > 64) ? (64) : (*state->run_length);
-    const uint16_t current_pixel_max = *state->current_pixel_index + run_length; //track end of current byte
+    const uint16_t current_pixel_max = current_pixel_idx + run_length;
 
-    uint8_t  lowest_run_length;
+    uint8_t pixel_offset = *state->encoded_pixel_index - current_pixel_idx;
+    uint8_t lowest_run_length;
     
-    uint8_t pixel_offset = *state->encoded_pixel_index - *state->current_pixel_index;
     if (pixel_offset) {
-        lowest_run_length = ((pixel_offset < run_length) ? pixel_offset : run_length); //we cannot compare more pixels then the byte with lowest runlength has
+        lowest_run_length = ((pixel_offset < run_length) ? pixel_offset : run_length);
     } else {
-        lowest_run_length = ((run_length_encoded < run_length) ? run_length_encoded : run_length); //we cannot compare more pixels then the byte with lowest runlength has
+        lowest_run_length = ((run_length_encoded < run_length) ? run_length_encoded : run_length);
     }
     
-char message2[100];
-//sprintf(message2, "current_color: %u, encoded_color: %u, *state->line_start_change_x: %i \n\r", *state->current_color, state->color_map_encoded[colorbits], *state->line_start_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-//sprintf(message2, "run_length: %u, run_length_encoded: %u, current_pixel_index: %u, encoded_pixel_index: %u \n\r", run_length, run_length_encoded, *state->current_pixel_index, *state->encoded_pixel_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-// sprintf(message2, "run_length_encoded: %u, colorbits %u, *state->encoded_index: %u \n\r", run_length_encoded, *state->encoded_index, *state->encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-
-//sprintf(message2, "%04d 0x%04X %d\r\n", *state->current_pixel_index, *state->current_color, run_length);
-//HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-//*state->current_pixel_index += lowest_run_length;
-//    return;
-    
-    
-    //check if different color
+    // Check for color change and track first/last change
     if (*state->current_color != state->color_map_encoded[colorbits]) {
-        // Track the first change in the line
         if (*state->line_start_change_x == -1) {
-            *state->line_start_change_x = *state->current_pixel_index;
+            *state->line_start_change_x = current_pixel_idx;
         }
-        *state->line_end_change_x = *state->current_pixel_index + lowest_run_length;
-        
-//sprintf(message2, "current_color: %u, encoded_color: %u, *state->line_start_change_x: %i \n\r", *state->current_color, state->color_map_encoded[colorbits], *state->line_start_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-//sprintf(message2, "run_length: %u, run_length_encoded: %u, current_pixel_index: %u, encoded_pixel_index: %u \n\r", run_length, run_length_encoded, *state->current_pixel_index, *state->encoded_pixel_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);        
-        
-//sprintf(message2, "diff color\n\r"); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+        *state->line_end_change_x = current_pixel_idx + lowest_run_length;
     }
-    //increase current index with the amount of pixels that we checked
-    *state->current_pixel_index += lowest_run_length;
+
+    current_pixel_idx += lowest_run_length;
     if (pixel_offset == 0) {
         *state->encoded_pixel_index += run_length_encoded;
     }
-    
-    uint8_t current_remaining = current_pixel_max - *state->current_pixel_index;
-// sprintf(message2, "current_remaining: %u\n\r, *state->encoded_index: %u", current_remaining, *state->encoded_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-    while (current_remaining) { //Then process the next encoded_byte
-//sprintf(message2, "just inside while, encoded_pixel_index: %u\n\r", *state->encoded_pixel_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-        (*state->encoded_index)++;
-        colorbits = state->encoded_buffer[*state->encoded_index] >> color_shift_left;
-        run_length_encoded = (state->encoded_buffer[*state->encoded_index] & ((1 << color_shift_left) - 1)) + 1;
+
+    uint8_t current_remaining = current_pixel_max - current_pixel_idx;
+    while (current_remaining) {
+        encoded_index++;
+        colorbits = state->encoded_buffer[encoded_index] >> color_shift_left;
+        run_length_encoded = (state->encoded_buffer[encoded_index] & ((1 << color_shift_left) - 1)) + 1;
         lowest_run_length = ((run_length_encoded < current_remaining) ? run_length_encoded : current_remaining);
-//sprintf(message2, "encoded++ = run_length_encoded: %u, encoded_color: %u \n\r", run_length_encoded, state->color_map_encoded[colorbits]); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-       
+        
+        // Check for color change and track first/last change
         if (*state->current_color != state->color_map_encoded[colorbits]) {
             if (*state->line_start_change_x == -1) {
-                *state->line_start_change_x = *state->current_pixel_index;
+                *state->line_start_change_x = current_pixel_idx;
             }
-            *state->line_end_change_x = *state->current_pixel_index + lowest_run_length;
-//sprintf(message2, "inside while diff color, lowest_run_length:%u\n\r", lowest_run_length); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);            
-//sprintf(message2, "current_color: %u, encoded_color: %u, *state->line_start_change_x: %i \n\r", *state->current_color, state->color_map_encoded[colorbits], *state->line_start_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-//sprintf(message2, "run_length: %u, run_length_encoded: %u, current_pixel_index: %u, encoded_pixel_index: %u \n\r", run_length, run_length_encoded, *state->current_pixel_index, *state->encoded_pixel_index); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);        
+            *state->line_end_change_x = current_pixel_idx + lowest_run_length;
         }
-        *state->current_pixel_index += lowest_run_length;
+
+        current_pixel_idx += lowest_run_length;
         *state->encoded_pixel_index += run_length_encoded;
-        current_remaining = current_pixel_max - *state->current_pixel_index;
+        current_remaining = current_pixel_max - current_pixel_idx;
     }
-    if (*state->encoded_pixel_index <= *state->current_pixel_index) {
-       (*state->encoded_index)++;
+    if (*state->encoded_pixel_index <= current_pixel_idx) {
+       encoded_index++;
     }
+    *state->encoded_index = encoded_index;
+    *state->current_pixel_index = current_pixel_idx;
 }
 
 
-point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
+rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
   alignment = 0;
   
     uint8_t num_color_bits = 2; //Need to be included in function call
@@ -771,11 +753,17 @@ point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t align
     //For comparing
     uint16_t encoded_pixel_index;
     uint16_t current_pixel_index;
-    int16_t buff_start_change_x = -1;    // The first X position (lowest value) across all lines where a pixel has changed. -1 indicates no changes.
-    int16_t buff_end_change_x = 0;       // The last X position (highest value) across all lines where a pixel has changed. 0 indicates no changes (if no changes have been tracked).
-    int16_t buff_start_change_y = -1;    // The first X position (lowest value) across all lines where a pixel has changed. -1 indicates no changes.
-    int16_t buff_end_change_y = 0;       // The last X position (highest value) across all lines where a pixel has changed. 0 indicates no changes (if no changes have been tracked).
-    int16_t track_line = 0;    
+    //int16_t buff_start_change_x = -1;    // The first X position (lowest value) across all lines where a pixel has changed. -1 indicates no changes.
+    //int16_t buff_end_change_x = 0;       // The last X position (highest value) across all lines where a pixel has changed. 0 indicates no changes (if no changes have been tracked).
+    //int16_t buff_start_change_y = -1;    // The first X position (lowest value) across all lines where a pixel has changed. -1 indicates no changes.
+    //int16_t buff_end_change_y = 0;       // The last X position (highest value) across all lines where a pixel has changed. 0 indicates no changes (if no changes have been tracked).
+    int16_t track_line = 0;
+    
+    rect_points_t buff = {
+    .start = {-1, -1},  // Initialize start point with (-1, -1)
+    .end = {0, 0}       // Initialize end point with (0, 0)
+    };
+    
     int16_t line_start_change_x;           //first-last change per line
     int16_t line_end_change_x;
     
@@ -888,7 +876,6 @@ point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t align
             line_end_change_x = 0;
             encoded_pixel_index = 0;
             current_pixel_index = 0;
-
 
             // Background padding before writing chars in case of center/right aligment
             uint16_t padding_before = 0;
@@ -1008,20 +995,20 @@ point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t align
                 gfx_crle_run_differences(&buffer_state, num_color_bits);
                 run_length = 0;
             }
-char message2[100];
-            sprintf(message2, "     ----------line: %i, yy: %i, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", line, yy, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+//char message2[100];
+//sprintf(message2, "     ----------line: %i, yy: %i, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", line, yy, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
             // Update the start and end values based on changes
             if (line_start_change_x != -1) { 
                 // Track the minimum (first) change X position across the line
-                if (buff_start_change_x == -1 || line_start_change_x < buff_start_change_x) {
-                    buff_start_change_x = line_start_change_x;
+                if (buff.start.x == -1 || line_start_change_x < buff.start.x) {
+                    buff.start.x = line_start_change_x;
                 }
             }
             // Always track the last changed X position across the line
-            buff_end_change_x = (line_end_change_x > buff_end_change_x) ? line_end_change_x : buff_end_change_x;
+            buff.end.x = (line_end_change_x > buff.end.x) ? line_end_change_x : buff.end.x;
             if (line_start_change_x != -1) {
-                buff_end_change_y = track_line + 1;
-                buff_start_change_y = (buff_start_change_y == -1) ? track_line : buff_start_change_y;
+                buff.end.y = track_line + 1;
+                buff.start.y = (buff.start.y == -1) ? track_line : buff.start.y;
             }
             track_line++;
         }
@@ -1061,7 +1048,7 @@ char message2[100];
                 current_pixel_index = 0;
                 current_color = background_color;
                 run_length = line_size;
-sprintf(message2, "     ----------extra:run_length: %u, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", run_length, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+//sprintf(message2, "     ----------extra:run_length: %u, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", run_length, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
                 while (run_length >= max_run_length) {
                     //encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
                     gfx_crle_run_differences(&buffer_state, num_color_bits);
@@ -1072,19 +1059,19 @@ sprintf(message2, "     ----------extra:run_length: %u, line_start_change_x: %i,
                     gfx_crle_run_differences(&buffer_state, num_color_bits);
                     run_length = 0;
                 }
-                sprintf(message2, "     ----------extra: run_length: %u, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", run_length, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+     //sprintf(message2, "     ----------extra: run_length: %u, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", run_length, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
                 // Update the start and end values based on changes
                 if (line_start_change_x != -1) { 
                     // Track the minimum (first) change X position across the line
-                    if (buff_start_change_x == -1 || line_start_change_x < buff_start_change_x) {
-                        buff_start_change_x = line_start_change_x;
+                    if (buff.start.x == -1 || line_start_change_x < buff.start.x) {
+                        buff.start.x = line_start_change_x;
                     }
                 }
                 // Always track the last changed X position across the line
-                buff_end_change_x = (line_end_change_x > buff_end_change_x) ? line_end_change_x : buff_end_change_x;
+                buff.end.x = (line_end_change_x > buff.end.x) ? line_end_change_x : buff.end.x;
                 if (line_start_change_x != -1) {
-                    buff_end_change_y = track_line + 1;
-                    buff_start_change_y = (buff_start_change_y == -1) ? track_line : buff_start_change_y;
+                    buff.end.y = track_line + 1;
+                    buff.start.y = (buff.start.y == -1) ? track_line : buff.start.y;
                 }
                 track_line++;
             }
@@ -1093,10 +1080,10 @@ sprintf(message2, "     ----------extra:run_length: %u, line_start_change_x: %i,
     *(uint16_t*)&encoded_buffer[HEIGHT_LSB_B7] = combined_buffer_height;
     
 //    char message2[100];
-    sprintf(message2, "buff_start_change_x: %i, buff_end_change_x: %i, buff_start_change_y: %i, buff_end_change_y: %i\n\r", buff_start_change_x, buff_end_change_x, buff_start_change_y, buff_end_change_y); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+//sprintf(message2, "buff.start.x: %i, buff.end.x: %i, buff.start.y: %i, buff.end.y: %i\n\r", buff.start.x, buff.end.x, buff.start.y, buff.end.y); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
 
     // Calculate text size
-	return (point_t){line_size, combined_buffer_height};
+    return (rect_area_t){buff.start.x, buff.start.y, buff.end.x-buff.start.x, buff.end.y-buff.start.y};
 }
 //END TRIS COMPARE FUNCTION
 
@@ -1523,7 +1510,7 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
 
 
 
-//Tris Test printing to buffer, instead of screen - Large no compression buffer
+//Tris Test printing to buffer, instead of screen - Large uncompressed buffer, 2byte per pixel (RGB565)
 point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf, uint16_t *smeter_buffer, uint16_t buffer_width)
 {

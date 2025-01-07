@@ -379,16 +379,43 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     uint16_t colors[] = {0x00F8, 0xFFFF};
     sprintf(text, "A/ 430.8815#@\n$^)g*j//<>j*AB\n1");
     //sprintf(text, "Rx 430.8815");
-    //sprintf(text, "A/ 430.882121");
+   // for (uint16_t i = 0 ; i < 100000 ; i+=625) {
+   //     sprintf(text, "Rx 430.%05u", i);
+   //     encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+   //     display_drawEncodedBuffer(encoded_buffer[0]);
+   // }
  
 
     encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    display_drawEncodedBuffer(encoded_buffer[0]);
     //display_contents_EncodedBuffer(encoded_buffer[0]);
     
     //display_drawEncodedBuffer(encoded_buffer[0]);
     sprintf(text, "A/ 431.8815#@\n$^)g*j//<>j*AB\n1");
-    gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+        
+    //uint32_t tickstart = HAL_GetTick();
+    //for (int i=0; i<1000; i++){
+    //    gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    //}
+    //uint32_t tickend = HAL_GetTick();   
+    //sprintf(message2, "Comparing Buffer 100x: %i ms\n\r", tickend - tickstart); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+    rect_area_t box = gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+    sprintf(message2, "box.start.x: %i, box.start.y: %i, box.w: %i, box.h: %i\n\r", box.start.x, box.start.y, box.w, box.h); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+    encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
+  
+    uint32_t tickstart = HAL_GetTick();
+    for (int i=0; i<1000; i++){  
+        //display_drawEncodedBuffer_area(encoded_buffer[0], &box);
+        //display_drawEncodedBuffer(encoded_buffer[0]);
+        rect_area_t box = gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);  
+    }
+    uint32_t tickend = HAL_GetTick();   
+    sprintf(message2, "Comparing Buffer 100x: %i ms\n\r", tickend - tickstart); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);    
+    display_drawEncodedBuffer_area(encoded_buffer[0], &box);  
     
+    while(1);
+
+
     encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
     display_drawEncodedBuffer(encoded_buffer[0]);
     //display_contents_EncodedBuffer(encoded_buffer[0]);
@@ -404,7 +431,7 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     }
     uint32_t tickend = HAL_GetTick();
     sprintf(message2, "Encoding Buffer 100x: %i ms\n\r", tickend - tickstart); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
-
+    
     tickstart = HAL_GetTick();
     for (int i=0; i<100; i++){
         //sprintf(text, "A/ 430.8815#@$^<>j*A");

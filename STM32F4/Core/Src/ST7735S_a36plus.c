@@ -208,32 +208,29 @@ void display_drawEncodedBuffer(uint8_t *buffer) __attribute__((optimize("O3"))) 
 void display_drawEncodedBuffer(uint8_t *buffer) {
     // Read header information
     const uint8_t num_color_bits = buffer[COLOR_BITS_B0];
-    const point_t start = {
+    const point_t buffer_start = {
         .x = *(uint16_t*)&buffer[START_X_LSB_B1],
         .y = *(uint16_t*)&buffer[START_Y_LSB_B3]
     };
-    const uint16_t width = *(uint16_t*)&buffer[WIDTH_LSB_B5];
-    const uint16_t height = *(uint16_t*)&buffer[HEIGHT_LSB_B7];
+    const uint16_t buffer_width = *(uint16_t*)&buffer[WIDTH_LSB_B5];
+    const uint16_t buffer_height = *(uint16_t*)&buffer[HEIGHT_LSB_B7];
     const uint8_t max_colors = 1 << num_color_bits;
 
     // Initialize color map from the header
     uint16_t color_map[max_colors];
     const uint8_t *color_data = &buffer[COLOR_START_B9];
     for (int i = 0; i < max_colors; i++) {
-        //color_map[i] = buffer[COLOR_START_B9 + 2 * i] | (buffer[COLOR_START_B9 + 2 * i + 1] << 8);
         color_map[i] = *(uint16_t*)&color_data[i * 2];
     }
     int encoded_index = COLOR_START_B9 + (max_colors * 2);
 
-    const size_t num_pixels = width * height; // Total number of pixels
-    // Calculate the bit masks based on the number of color bits
-    uint8_t color_mask = (1 << num_color_bits) - 1;
-    uint8_t run_length_shift = 8 - num_color_bits;
+    const size_t num_pixels = buffer_width * buffer_height; // Total number of pixels
+    const uint8_t run_length_shift = 8 - num_color_bits;
 
     // Start communication with the LCD controller
     gpio_clearPin(LCD_CS);
     gpio_clearPin(LCD_DC);
-    display_setWindow(start.x, start.y, width, height); // RASET, CASET, RAMWR
+    display_setWindow(buffer_start.x, buffer_start.y, buffer_width, buffer_height); // RASET, CASET, RAMWR
     gpio_setPin(LCD_DC);
 
     // Send the pixel data from the buffer to the display
@@ -270,14 +267,93 @@ void display_drawEncodedBuffer(uint8_t *buffer) {
 }
 
 
+void display_drawEncodedBuffer_area(uint8_t *buffer, rect_area_t *area) {
+    // Read header information
+    const uint8_t num_color_bits = buffer[COLOR_BITS_B0];
+    const point_t buffer_start = {
+        .x = *(uint16_t*)&buffer[START_X_LSB_B1],
+        .y = *(uint16_t*)&buffer[START_Y_LSB_B3]
+    };
+    const uint16_t buffer_width = *(uint16_t*)&buffer[WIDTH_LSB_B5];
+    const uint16_t buffer_height = *(uint16_t*)&buffer[HEIGHT_LSB_B7];
+    const uint8_t max_colors = 1 << num_color_bits;
+
+    // Initialize color map from the header
+    uint16_t color_map[max_colors];
+    const uint8_t *color_data = &buffer[COLOR_START_B9];
+    for (int i = 0; i < max_colors; i++) {
+        color_map[i] = *(uint16_t*)&color_data[i * 2];
+    }
+    int encoded_index = COLOR_START_B9 + (max_colors * 2);
+    //temp for test
+    color_map[0] = 0xf800; //red
+    
+    const uint8_t run_length_shift = 8 - num_color_bits;
+    
+    // Calculate start pixel
+    uint32_t target_pixel = (area->start.y) * buffer_width + area->start.x;  // First pixel to print
+    uint32_t current_pixel = 0;
+    uint16_t current_line = 0;
+    
+    // Start communication with the LCD controller
+    gpio_clearPin(LCD_CS);
+    gpio_clearPin(LCD_DC);
+    display_setWindow(buffer_start.x + area->start.x, buffer_start.y + area->start.y, area->w, area->h);
+    gpio_setPin(LCD_DC);
+
+    // Send the pixel data from the buffer to the display
+    while (current_line < area->h) {
+        uint8_t byte = buffer[encoded_index++];
+        uint8_t color_bits = byte >> run_length_shift;
+        uint8_t run_length = (byte & ((1 << run_length_shift) - 1)) + 1;
+        uint16_t color = color_map[color_bits];
+        
+        while (run_length > 0) {
+            if (current_pixel == target_pixel) {
+                // We're at the start of our area for this line
+                uint16_t pixels_to_print = area->w;
+                while (pixels_to_print > 0) {
+                    sendShort(color);
+                    pixels_to_print--;
+                    run_length--;
+                    current_pixel++;
+                    
+                    if (run_length == 0 && pixels_to_print > 0) {
+                        // Need new byte to continue the line
+                        byte = buffer[encoded_index++];
+                        color_bits = byte >> run_length_shift;
+                        run_length = (byte & ((1 << run_length_shift) - 1)) + 1;
+                        color = color_map[color_bits];
+                    }
+                }
+                // Finished line, setup for next
+                current_line++;
+                //target_pixel = ((area->start.y + current_line) * buffer_width) + area->start.x;
+                target_pixel += buffer_width;
+            } else {
+                // Skip pixels until we reach our target
+                current_pixel++;
+                run_length--;
+            }
+        }
+    }
+    gpio_setPin(LCD_CS);
+}
+
+
 void display_drawDecodedBuffer(uint16_t *buffer) {
     // Read header information
-    point_t start;
-    start.x = buffer[0];
-    start.y = buffer[1];
+      point_t start = {
+        .x = buffer[0],
+        .y = buffer[1]
+    };
+    //consider using rect_area_t
     uint16_t width = buffer[3];
     uint16_t height = buffer[4];
     //uint8_t max_colors = 1 << num_color_bits;
+    if (width == 0 || height == 0) {
+        return;  // Invalid dimensions
+    }
  
     // Initialize color map from the header
     //uint16_t color_map[max_colors];

@@ -69,6 +69,26 @@ typedef struct point_t
 } point_t;
 
 /**
+ * Structure that represents the X,Y coordinates + Width and height of a rectangular area / (bounding) box
+ */
+typedef struct rect_area_t
+{
+    point_t start;
+    int16_t w;
+    int16_t h;
+} rect_area_t;
+
+/**
+ * Structure that represents the X,Y Start coordinates and X,Y End coordinates, this can describe a rectangular area
+ * It is related to rect_area_t, but it uses a second coordinate instead of width and height.
+ */
+typedef struct rect_points_t
+{
+    point_t start;
+    point_t end;
+} rect_points_t ;
+
+/**
  * Structure that represents a single color in the RGB 8 bit per channel format
  */
 typedef struct color_t
@@ -266,7 +286,7 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
                         color_t color, const char *buf, uint16_t *smeter_buffer, uint16_t buffer_width);
 
 point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors);
-point_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors);
+rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors);
 																 
 void encode_buffer(uint16_t *smeter_buffer, uint32_t buffer_size, uint8_t *encoded_buffer);
 

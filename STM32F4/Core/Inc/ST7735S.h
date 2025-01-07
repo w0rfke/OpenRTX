@@ -5,6 +5,7 @@
 #include "stm32f4xx_ll_gpio.h"  // STM32 Low-Level GPIO functions
 #include "stm32f401xe.h" // STM32F4xx definitions
 #include "platform.h"
+#include "graphics.h"
 
 // Screen dimensions and pixel format
 #define CONFIG_SCREEN_WIDTH  132
@@ -124,6 +125,8 @@ void display_colorWindow565(uint16_t x, uint16_t y, uint16_t width, uint16_t hei
 void display_drawBuffer(uint16_t x, uint16_t y, uint16_t height, uint16_t width, uint16_t *buffer);
 //void display_drawEncodedBuffer(point_t start, uint16_t height, uint16_t width, uint8_t *buffer);
 void display_drawEncodedBuffer(uint8_t *buffer);
+void display_drawEncodedBuffer_area(uint8_t *buffer, rect_area_t *area);
+  
 void display_drawDecodedBuffer(uint16_t *buffer);
 void display_sendRawPixel(uint16_t data);
 void display_setWindow(uint16_t x, uint16_t y, uint16_t height, uint16_t width);
