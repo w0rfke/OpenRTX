@@ -26,6 +26,9 @@
 
 #include "display.h"
 #include "ST7735S.h"
+
+#include "arm_acle.h"
+
 //#include <hwconfig.h>
 #include "graphics.h"
 #include <string.h>
@@ -669,7 +672,7 @@ typedef struct {
     uint16_t *run_length;                // Pointer to the run length
 } BufferProcessingState;
 
-
+ uint16_t count = 0;
 
 void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bits) {
     uint16_t encoded_index = *state->encoded_index;
@@ -679,6 +682,7 @@ void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bi
     
     uint8_t colorbits = state->encoded_buffer[encoded_index] >> color_shift_left;
     uint16_t run_length_encoded = (state->encoded_buffer[encoded_index] & ((1 << color_shift_left) - 1)) + 1;
+  __dsb(0xF);
     
     const uint16_t run_length = (*state->run_length > 64) ? (64) : (*state->run_length);
     const uint16_t current_pixel_max = current_pixel_idx + run_length;
@@ -709,6 +713,7 @@ void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bi
     while (current_remaining) {
         encoded_index++;
         colorbits = state->encoded_buffer[encoded_index] >> color_shift_left;
+        __dsb(0xF);
         run_length_encoded = (state->encoded_buffer[encoded_index] & ((1 << color_shift_left) - 1)) + 1;
         lowest_run_length = ((run_length_encoded < current_remaining) ? run_length_encoded : current_remaining);
         
@@ -995,8 +1000,8 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
                 gfx_crle_run_differences(&buffer_state, num_color_bits);
                 run_length = 0;
             }
-//char message2[100];
-//sprintf(message2, "     ----------line: %i, yy: %i, line_start_change_x: %i, line_end_change_x: %i \n\r\n\r", line, yy, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+char message2[100];
+sprintf(message2, "  ---l: %i,yy: %i,s_x: %i,e_x: %i \n\r", line, yy, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
             // Update the start and end values based on changes
             if (line_start_change_x != -1) { 
                 // Track the minimum (first) change X position across the line
