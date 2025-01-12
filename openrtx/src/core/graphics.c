@@ -24,10 +24,9 @@
 
 
 
-#include "display.h"
-#include "ST7735S.h"
+#include "../../../openrtx/include/interfaces/display.h"
+#include "../../../STM32F4/Core/Inc/ST7735S.h"
 
-#include "arm_acle.h"
 
 //#include <hwconfig.h>
 #include "graphics.h"
@@ -71,7 +70,8 @@
 //added for debugging functions
 #include "string.h" //For Huart1 strlen
 extern UART_HandleTypeDef huart1;
-#include "stm32f401xe.h"
+#include "../../../STM32F4/Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f401xe.h"
+
 
 // Variable swap macro
 #define DEG_RAD  0.017453292519943295769236907684886
@@ -381,9 +381,8 @@ void gfx_drawLine(point_t start, point_t end, color_t color)
         end.y = tmp;
     }
 
-    int16_t dx, dy;
-    dx = end.x - start.x;
-    dy = abs(end.y - start.y);
+    int16_t dx = end.x - start.x;
+    int16_t dy = abs(end.y - start.y);
 
     int16_t err = dx >> 1;
     int16_t ystep;
@@ -614,24 +613,33 @@ static inline uint16_t get_line_size(GFXfont f, uint16_t startx, const char *tex
 }
 
 
-static inline uint16_t get_line_size2(GFXfont f, uint16_t startx, const char *text, uint16_t length, uint16_t x_max)
+
+//Version2, uses PTR for GFXfont, no more startx and length in function call
+static uint16_t get_line_size2(const GFXfont* f, const char* text, uint16_t x_max)
 {
     uint16_t line_size = 0;
-    //uint16_t x_max = width - startx;   //start.x needs to be taken into account for screen boundary
-    for(unsigned i = 0; i < length && text[i] != '\n' && text[i] != '\r'; i++)
-    {
-        GFXglyph glyph = f.glyph[text[i] - f.first];
-        if ((line_size + glyph.xAdvance) <= x_max)   //Correct to <= instead of <
-            line_size += glyph.xAdvance;
-        else
+    const GFXglyph* glyph_array = f->glyph;
+    const uint16_t first_char = f->first;
+    char c;
+    
+    while((c = *text) != '\0') {
+        if (c == '\n' || c == '\r') {
             break;
+        }
+        
+        uint16_t xAdvance = glyph_array[c - first_char].xAdvance;
+        if (line_size + xAdvance > x_max) {
+            break;
+        }
+        line_size += xAdvance;
+        text++;
     }
     return line_size;
 }
 
 /**
  * Compute the start x coordinate of a new line of given pixel size
- * @param alinment: enum representing the text alignment
+ * @param alignment: enum representing the text alignment
  * @param line_size: the size of the current text line in pixels
  */
 static inline uint16_t get_reset_x(textAlign_t alignment, uint16_t line_size,
@@ -672,9 +680,13 @@ typedef struct {
     uint16_t *run_length;                // Pointer to the run length
 } BufferProcessingState;
 
- uint16_t count = 0;
+
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#pragma clang optimize off
 
 void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bits) {
+    __DSB();
     uint16_t encoded_index = *state->encoded_index;
     uint16_t current_pixel_idx = *state->current_pixel_index;
     const uint8_t color_shift_left = 8 - num_color_bits;
@@ -682,21 +694,22 @@ void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bi
     
     uint8_t colorbits = state->encoded_buffer[encoded_index] >> color_shift_left;
     uint16_t run_length_encoded = (state->encoded_buffer[encoded_index] & ((1 << color_shift_left) - 1)) + 1;
-  __dsb(0xF);
-    
+
+
     const uint16_t run_length = (*state->run_length > 64) ? (64) : (*state->run_length);
     const uint16_t current_pixel_max = current_pixel_idx + run_length;
 
     uint8_t pixel_offset = *state->encoded_pixel_index - current_pixel_idx;
     uint8_t lowest_run_length;
-    
+
     if (pixel_offset) {
         lowest_run_length = ((pixel_offset < run_length) ? pixel_offset : run_length);
     } else {
         lowest_run_length = ((run_length_encoded < run_length) ? run_length_encoded : run_length);
     }
-    
+
     // Check for color change and track first/last change
+    __DSB();
     if (*state->current_color != state->color_map_encoded[colorbits]) {
         if (*state->line_start_change_x == -1) {
             *state->line_start_change_x = current_pixel_idx;
@@ -713,11 +726,11 @@ void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bi
     while (current_remaining) {
         encoded_index++;
         colorbits = state->encoded_buffer[encoded_index] >> color_shift_left;
-        __dsb(0xF);
         run_length_encoded = (state->encoded_buffer[encoded_index] & ((1 << color_shift_left) - 1)) + 1;
         lowest_run_length = ((run_length_encoded < current_remaining) ? run_length_encoded : current_remaining);
-        
+
         // Check for color change and track first/last change
+        __DSB();
         if (*state->current_color != state->color_map_encoded[colorbits]) {
             if (*state->line_start_change_x == -1) {
                 *state->line_start_change_x = current_pixel_idx;
@@ -734,11 +747,13 @@ void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bi
     }
     *state->encoded_index = encoded_index;
     *state->current_pixel_index = current_pixel_idx;
+    __DSB();
 }
 
 
-rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
-  alignment = 0;
+
+rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, const uint16_t *colors, uint8_t num_colors) {
+  alignment = 2;
   
     uint8_t num_color_bits = 2; //Need to be included in function call
     const GFXfont f = fonts[size];
@@ -779,8 +794,8 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
     uint16_t color_map_encoded[1 << encoded_buffer[COLOR_BITS_B0]];  // size = 1 << num_color_bits
     // Initialize color map from the header (no need for extra variables)
     for (int i = 0; i < (1 << encoded_buffer[COLOR_BITS_B0]); i++) {  // max_colors = 1 << num_color_bits
-        //color_map_encoded[i] = encoded_buffer[COLOR_START_B9 + 2 * i] | (encoded_buffer[COLOR_START_B9 + 2 * i + 1] << 8);
-        color_map_encoded[i] = *(uint16_t*)&encoded_buffer[COLOR_START_B9 + 2 * i];
+        color_map_encoded[i] = encoded_buffer[COLOR_START_B9 + 2 * i] | (encoded_buffer[COLOR_START_B9 + 2 * i + 1] << 8);
+        //color_map_encoded[i] = *(uint16_t*)&encoded_buffer[COLOR_START_B9 + 2 * i];
     }
     
      BufferProcessingState buffer_state = {
@@ -817,8 +832,8 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
     for (unsigned i = 0; i < len; i++) {
         char c = buf[i];
         GFXglyph glyph = f.glyph[c - f.first];
-        uint8_t h = glyph.height;
-        int8_t yo = glyph.yOffset;
+        //uint8_t h = glyph.height;
+        //int8_t yo = glyph.yOffset;
 
         // Handle newline and carriage return
         if (c == '\n' || c == '\r') {
@@ -873,8 +888,10 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
     
 
     for (uint8_t line = 0; line <= additional_write_lines; line++) {
-        size_t start_char = last_char_index; //save so that we can start at the right character after newline/wordwrap      
-        for (int16_t yy = -font_height; yy < yy_max; yy++) {
+        size_t start_char = last_char_index; //save so that we can start at the right character after newline/wordwrap
+        int16_t yy = -font_height;
+        while (yy < yy_max) {
+        //for (int16_t yy = -font_height; yy < yy_max; yy++) {
             current_color = background_color;
             //Reset variables to find the changes
             line_start_change_x = -1;      //first-last change per line
@@ -885,7 +902,8 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
             // Background padding before writing chars in case of center/right aligment
             uint16_t padding_before = 0;
             if (alignment != TEXT_ALIGN_LEFT) {
-                uint16_t line_width = get_line_size2(f, reset_x, &buf[start_char], len - start_char, x_max);
+              //uint16_t line_width = get_line_size2(f, reset_x, &buf[start_char], len - start_char, x_max);
+                uint16_t line_width = get_line_size2(&f, &buf[start_char], x_max);
                 padding_before = (alignment == TEXT_ALIGN_CENTER) ? (line_size - line_width) / 2 : (line_size - line_width);
             }
             if (padding_before) {
@@ -906,8 +924,6 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
                 uint16_t bo = glyph.bitmapOffset;
                 uint8_t w = glyph.width, h = glyph.height;
                 int8_t xo = glyph.xOffset, yo = glyph.yOffset;
-
-                uint8_t xx, bits = 0, bit = 0;
 
                 if (c == '\n' || c == '\r') {                   //Newline
                     if (c == '\r' && buf[i + 1] == '\n') {	      //treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
@@ -937,13 +953,16 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
                     }
                 } else {
                     // Draw bitmap and handle padding
+                    uint8_t bits = 0, bit = 0;
                     int16_t bit_offset = (yy - yo) * w;  // Total bit offset
-                    bo += bit_offset / 8; // For each line jump to the correct byte in bitmap
+                    //bo += bit_offset / 8; // For each line jump to the correct byte in bitmap
+                    bo += (bit_offset >> 3);
                     bits = bitmap[bo++];
-                    bit = ((unsigned)bit_offset) % 8;
+                    // 
+                    bit =(bit_offset & 7);
                     bits <<= bit;
 
-                    for (xx = 0; xx < glyph.xAdvance; xx++) {
+                    for (uint8_t xx = 0; xx < glyph.xAdvance; xx++) {
                         uint16_t pixel_color;
                         if ((xx < xo) || (xx >= (w + xo))) {   //Handle background padding: xoffset before char and "xAdvance - width" after char               
                             pixel_color = background_color;  					// This is background padding, don't shift "bits"
@@ -1000,8 +1019,8 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
                 gfx_crle_run_differences(&buffer_state, num_color_bits);
                 run_length = 0;
             }
-char message2[100];
-sprintf(message2, "  ---l: %i,yy: %i,s_x: %i,e_x: %i \n\r", line, yy, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+//char message2[100];
+//sprintf(message2, "  ---l: %i,yy: %i,s_x: %i,e_x: %i \n\r", line, yy, line_start_change_x, line_end_change_x); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
             // Update the start and end values based on changes
             if (line_start_change_x != -1) { 
                 // Track the minimum (first) change X position across the line
@@ -1016,6 +1035,7 @@ sprintf(message2, "  ---l: %i,yy: %i,s_x: %i,e_x: %i \n\r", line, yy, line_start
                 buff.start.y = (buff.start.y == -1) ? track_line : buff.start.y;
             }
             track_line++;
+            yy++;
         }
 
         if ((line < additional_write_lines) || (combined_buffer_height < y_max)) {
@@ -1091,7 +1111,8 @@ sprintf(message2, "  ---l: %i,yy: %i,s_x: %i,e_x: %i \n\r", line, yy, line_start
     return (rect_area_t){buff.start.x, buff.start.y, buff.end.x-buff.start.x, buff.end.y-buff.start.y};
 }
 //END TRIS COMPARE FUNCTION
-
+ #pragma clang optimize on
+#pragma GCC pop_options
 
 
 //Tris.. trying inline function for encoding buffer
@@ -1105,7 +1126,7 @@ sprintf(message2, "  ---l: %i,yy: %i,s_x: %i,e_x: %i \n\r", line, yy, line_start
 //Also test updated logic due to reseting to new byte for new line
 
 point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
-  alignment = 0;
+  alignment = 2;
   
     uint8_t num_color_bits = 2; //Need to be included in function call
     const GFXfont f = fonts[size];
@@ -1118,12 +1139,10 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
     uint16_t background_color = 0;
     uint16_t foreground_color = 1;
     uint16_t encoded_index = COLOR_START_B9 + (max_colors * 2);  //define position of first data byte = end of header
-    // Encoding variables
-    uint16_t current_color = 0;
-    uint16_t run_length = 0;
+
     uint8_t last_char_index = 0;          //keep last character index so we can process additional lines if needed
     uint16_t line_size = 0;
-    uint16_t combined_buffer_height = total_font_height; //will containt the total height at the end
+    uint16_t combined_buffer_height = total_font_height; //will contain the total height at the end
     uint8_t additional_write_lines = 0; //in case of newline or wordwrap
      
     //If we don't have buffer width & height: automatic sizing to text
@@ -1143,8 +1162,6 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
     for (unsigned i = 0; i < len; i++) {
         char c = buf[i];
         GFXglyph glyph = f.glyph[c - f.first];
-        uint8_t h = glyph.height;
-        int8_t yo = glyph.yOffset;
 
         // Handle newline and carriage return
         if (c == '\n' || c == '\r') {
@@ -1200,13 +1217,19 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
     reset_y = combined_buffer_height;
 
     for (uint8_t line = 0; line <= additional_write_lines; line++) {
-        size_t start_char = last_char_index; //save so that we can start at the right character after newline/wordwrap      
-        for (int16_t yy = -font_height; yy < yy_max; yy++) {
+        size_t start_char = last_char_index; //save so that we can start at the right character after newline/wordwrap
+        // Encoding variables
+        uint16_t current_color = 0;
+        uint16_t run_length = 0;
+        int16_t yy = -font_height;
+        while (yy < yy_max) {
+        //for (int16_t yy = -font_height; yy < yy_max; yy++) {
             current_color = background_color;
             // Background padding before writing chars in case of center/right aligment
             uint16_t padding_before = 0;
             if (alignment != TEXT_ALIGN_LEFT) {
-                uint16_t line_width = get_line_size2(f, reset_x, &buf[start_char], len - start_char, x_max);
+                //uint16_t line_width = get_line_size2(f, reset_x, &buf[start_char], len - start_char, x_max);
+                uint16_t line_width = get_line_size2(&f, &buf[start_char], x_max);
                 padding_before = (alignment == TEXT_ALIGN_CENTER) ? (line_size - line_width) / 2 : (line_size - line_width);
             }
             if (padding_before) {
@@ -1226,8 +1249,6 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                 uint16_t bo = glyph.bitmapOffset;
                 uint8_t w = glyph.width, h = glyph.height;
                 int8_t xo = glyph.xOffset, yo = glyph.yOffset;
-
-                uint8_t xx, bits = 0, bit = 0;
 
                 if (c == '\n' || c == '\r') {                   //Newline
                     if (c == '\r' && buf[i + 1] == '\n') {	      //treating \r and \r\n the same ; buf[i+1] could point to null in null ended string.
@@ -1255,13 +1276,16 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                     }
                 } else {
                     // Draw bitmap and handle padding
+                    uint8_t bits = 0, bit = 0;
                     int16_t bit_offset = (yy - yo) * w;  // Total bit offset
-                    bo += bit_offset / 8; // For each line jump to the correct byte in bitmap
+                    //bo += bit_offset / 8; // For each line jump to the correct byte in bitmap
+                    bo += (bit_offset >> 3);
                     bits = bitmap[bo++];
-                    bit = ((unsigned)bit_offset) % 8;
+                    //bit = ((unsigned)bit_offset) % 8;
+                    bit =(bit_offset & 7);
                     bits <<= bit;
 
-                    for (xx = 0; xx < glyph.xAdvance; xx++) {
+                    for (uint8_t xx = 0; xx < glyph.xAdvance; xx++) {
                         uint16_t pixel_color;
                         if ((xx < xo) || (xx >= (w + xo))) {   //Handle background padding: xoffset before char and "xAdvance - width" after char               
                             pixel_color = background_color;  					// This is background padding, don't shift "bits"
@@ -1313,6 +1337,7 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                 encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
                 run_length = 0;
             }
+            yy++;
         }
 
         if ((line < additional_write_lines) || (combined_buffer_height < y_max)) {
@@ -1377,8 +1402,8 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
     for (unsigned i = 0; i < len; i++) {
         char c = buf[i];
         GFXglyph glyph = f.glyph[c - f.first];
-        uint8_t h = glyph.height;
-        int8_t yo = glyph.yOffset;
+        //uint8_t h = glyph.height;
+        //int8_t yo = glyph.yOffset;
 
         // Handle newline and carriage return
         if (c == '\n' || c == '\r') {
@@ -1426,7 +1451,7 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
         uint8_t w = glyph.width, h = glyph.height;
         int8_t xo = glyph.xOffset,
                yo = glyph.yOffset;
-        uint8_t xx, yy, bits = 0, bit = 0;
+        uint8_t bits = 0, bit = 0;
         line_h = total_font_height;
     
 
@@ -1474,9 +1499,9 @@ point_t gfx_printBuffer2(point_t start, fontSize_t size, textAlign_t alignment,
         }
 
         // Draw bitmap
-        for (yy = 0; yy < h; yy++)
+        for (uint8_t yy = 0; yy < h; yy++)
         {
-            for (xx = 0; xx < w; xx++)
+            for (uint8_t xx = 0; xx < w; xx++)
             {
                 if (!(bit++ & 7))
                 {
@@ -1526,7 +1551,7 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
     uint16_t line_size = get_line_size(f, start.x, buf, len);
     uint16_t reset_x = get_reset_x(alignment, line_size, start.x);
     start.x = reset_x;
-    uint8_t font_height = font_detail[size].font_size;
+    //uint8_t font_height = font_detail[size].font_size;
 
     // Save initial start.y value to calculate vertical size
     uint16_t saved_start_y = start.y;
@@ -1543,7 +1568,7 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         uint8_t w = glyph.width, h = glyph.height;
         int8_t xo = glyph.xOffset,
               yo = glyph.yOffset;
-        uint8_t xx, yy, bits = 0, bit = 0;
+        uint8_t bits = 0, bit = 0;
         line_h = h;
 
         // Handle newline and carriage return
@@ -1585,9 +1610,9 @@ point_t gfx_printToBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         uint16_t rgb565 = (r << 11) | (g << 5) | b;  // Combine into RGB565 format
 
         // Draw bitmap to smeter_buffer
-        for (yy = 0; yy < h; yy++)
+        for (uint8_t yy = 0; yy < h; yy++)
         {
-            for (xx = 0; xx < w; xx++)
+            for (uint8_t xx = 0; xx < w; xx++)
             {
                 if (!(bit++ & 7))
                 {
@@ -1696,7 +1721,7 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         uint8_t w = glyph.width, h = glyph.height;
         int8_t xo = glyph.xOffset,
                yo = glyph.yOffset;
-        uint8_t xx, yy, bits = 0, bit = 0;
+        uint8_t bits = 0, bit = 0;
         line_h = h;
 
         // Handle newline and carriage return
@@ -1735,9 +1760,9 @@ point_t gfx_printBuffer(point_t start, fontSize_t size, textAlign_t alignment,
         }
 
         // Draw bitmap
-        for (yy = 0; yy < h; yy++)
+        for (uint8_t yy = 0; yy < h; yy++)
         {
-            for (xx = 0; xx < w; xx++)
+            for (uint8_t xx = 0; xx < w; xx++)
             {
                 if (!(bit++ & 7))
                 {

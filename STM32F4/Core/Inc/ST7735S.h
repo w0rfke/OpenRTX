@@ -2,10 +2,10 @@
 #define ST7735S_H
 
 #include <stdint.h>  // For uint8_t, uint16_t
-#include "stm32f4xx_ll_gpio.h"  // STM32 Low-Level GPIO functions
-#include "stm32f401xe.h" // STM32F4xx definitions
-#include "platform.h"
-#include "graphics.h"
+#include "../../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_gpio.h"  // STM32 Low-Level GPIO functions
+#include "../../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f401xe.h" // STM32F4xx definitions
+#include "../../../openrtx/include/interfaces/platform.h"
+#include "../../../openrtx/include/core/graphics.h"
 
 // Screen dimensions and pixel format
 #define CONFIG_SCREEN_WIDTH  132

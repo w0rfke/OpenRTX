@@ -3,14 +3,14 @@
 //#include <stddef.h>
 #include <stdint.h>
 
-#include "main.h"
-#include "ST7735S.h"
-#include "pinmap.h"
-#include "gpio-native.h"
-#include "stm32f401xe.h"
-#include "stm32f4xx_ll_spi.h"
-#include "openrtxfunctions.h"
-#include "graphics.h"
+#include "../inc/main.h"
+#include "../inc/ST7735S.h"
+#include "../../../platform/targets/A36Plus/pinmap.h"
+#include "../../../platform/mcu/STM32F4xx/drivers/gpio-native.h"
+#include "../../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f401xe.h"
+#include "../../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_ll_spi.h"
+#include "../inc/openrtxfunctions.h"
+#include "../../../openrtx/include/core/graphics.h"
 
 //added for debugging functions
 #include "string.h" //For Huart1 strlen

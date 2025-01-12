@@ -17,19 +17,19 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
-#include "ST7735S.h"
+#include "../inc/main.h"
+#include "../inc/ST7735S.h"
 #include "openrtx.h"
-#include "pinmap.h"
+#include "../../../platform/targets/A36Plus/pinmap.h"
 
 
 //added for debugging functions right into main
 #include "string.h" //For Huart1 strlen
-#include "state.h"
-#include "graphics.h"
-#include "keyboard.h"
-#include "ui.h"
-#include "delays.h"
+#include "../../../openrtx/include/core/state.h"
+#include "../../../openrtx/include/core/graphics.h"
+#include "../../../openrtx/include/interfaces/keyboard.h"
+#include "../../../openrtx/include/core/ui.h"
+#include "../../../openrtx/include/interfaces/delays.h"
 #include <stdlib.h>
 
 //added for debugging functions
@@ -399,9 +399,9 @@ s[10] = (color_t){0xf2, 0x3a, 0x3a, 255};
     display_drawEncodedBuffer(encoded_buffer[0]);
     for (uint16_t i = 0 ; i < 100000 ; i+=625) {
         sprintf(text, "Rx 430.%05u", i);
- HAL_UART_Transmit(&huart1, (uint8_t *)text, strlen(text), HAL_MAX_DELAY);
+ //HAL_UART_Transmit(&huart1, (uint8_t *)text, strlen(text), HAL_MAX_DELAY);
          box = gfx_compare_CrleBuffer(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
-          sprintf(message2, "box.start.x: %i, box.start.y: %i, box.w: %i, box.h: %i\n\r", box.start.x, box.start.y, box.w, box.h); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
+          //sprintf(message2, "box.start.x: %i, box.start.y: %i, box.w: %i, box.h: %i\n\r", box.start.x, box.start.y, box.w, box.h); HAL_UART_Transmit(&huart1, (uint8_t *)message2, strlen(message2), HAL_MAX_DELAY);
         encoded_buffer_size = gfx_printtoBufferCRLE(start, FONT_SIZE_6PT, TEXT_ALIGN_LEFT, text, encoded_buffer[0], colors , 2);
         display_drawEncodedBuffer_area(encoded_buffer[0], box);
 

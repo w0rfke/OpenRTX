@@ -1,6 +1,3 @@
-//Version 1 - First version to replace  "2x int8_t read" with (uint16_t*) casting
-//            To get variables from header.
-//			  No unrolled loop for sending pixels yet (slightly slower)
 /**
  * @brief Draws an encoded framebuffer to the display using Color Run-Length Encoding (CRLE).
  *
@@ -10,6 +7,82 @@
  *
  * @param buffer: A pointer to the buffer containing the encoded pixel data, including the header.
  */
+ //Version 2 unrolled loop for sending pixels, 8 at a time
+void display_drawEncodedBuffer(uint8_t *buffer) {
+    // Read header information
+    const uint8_t num_color_bits = buffer[COLOR_BITS_B0];
+    const point_t buffer_start = {
+        .x = *(uint16_t*)&buffer[START_X_LSB_B1],
+        .y = *(uint16_t*)&buffer[START_Y_LSB_B3]
+    };
+    const uint16_t buffer_width = *(uint16_t*)&buffer[WIDTH_LSB_B5];
+    const uint16_t buffer_height = *(uint16_t*)&buffer[HEIGHT_LSB_B7];
+    const uint8_t max_colors = 1 << num_color_bits;
+
+    // Initialize color map from the header
+    uint16_t color_map[max_colors];
+    const uint8_t *color_data = &buffer[COLOR_START_B9];
+    for (int i = 0; i < max_colors; i++) {
+        color_map[i] = *(uint16_t*)&color_data[i * 2];
+    }
+    int encoded_index = COLOR_START_B9 + (max_colors * 2);
+
+    const size_t num_pixels = buffer_width * buffer_height; // Total number of pixels
+    const uint8_t run_length_shift = 8 - num_color_bits;
+
+    // Start communication with the LCD controller
+    gpio_clearPin(LCD_CS);
+    gpio_clearPin(LCD_DC);
+    display_setWindow(buffer_start.x, buffer_start.y, buffer_width, buffer_height); // RASET, CASET, RAMWR
+    gpio_setPin(LCD_DC);
+
+    // Send the pixel data from the buffer to the display
+    uint32_t pixels_remaining = num_pixels;
+    
+    while (pixels_remaining > 0) {
+        uint8_t byte = buffer[encoded_index++];
+        uint8_t color_bits = byte >> run_length_shift;           // Extract the color bits
+        uint8_t run_length = (byte & ((1 << run_length_shift) - 1)) + 1;   // Extract the run length bits and adjust (1 to max run length)
+        uint16_t color = color_map[color_bits];
+      
+        // Unrolled loop for sending pixels (8 pixels at a time when possible)
+        while (run_length >= 8 && pixels_remaining >= 8) {
+            sendShort(color);
+            sendShort(color);
+            sendShort(color);
+            sendShort(color);
+            sendShort(color);
+            sendShort(color);
+            sendShort(color);
+            sendShort(color);
+            run_length -= 8;
+            pixels_remaining -= 8;
+        }
+        
+        // Handle remaining pixels
+        while (run_length > 0 && pixels_remaining > 0) {
+            sendShort(color);
+            run_length--;
+            pixels_remaining--;
+        }
+    }
+    gpio_setPin(LCD_CS);
+}
+
+
+
+/**
+ * @brief Draws an encoded framebuffer to the display using Color Run-Length Encoding (CRLE).
+ *
+ * This function reads the header information from the encoded buffer to determine the
+ * starting point, width, height, and color mapping. It then decodes the pixel data and
+ * sends it to the display controller.
+ *
+ * @param buffer: A pointer to the buffer containing the encoded pixel data, including the header.
+ */
+ //Version 1 - First version to replace  "2x int8_t read" with (uint16_t*) casting
+//            To get variables from header.
+//			  No unrolled loop for sending pixels yet (slightly slower)
 void display_drawEncodedBuffer(uint8_t *buffer) __attribute__((optimize("O3"))) {
     // Read header information
     //point_t start;
@@ -250,3 +323,5 @@ char message2[100] ;
     }
     gpio_setPin(LCD_CS);
 }
+
+

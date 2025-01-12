@@ -275,7 +275,7 @@ void display_sendRawPixel(uint16_t data)
 void display_defineScrollArea(uint16_t x, uint16_t x2)
 {
 
-	/* tfa: top fixed area: nr of line from top of the frame mem and display) */
+	/* tfa: top fixed area: nr of line from top of the frame mem and display */
 	uint16_t tfa = 160 - x2 + 1;
 	/* vsa: height of the vertical scrolling area in nr of line of the frame mem
 	   (not the display) from the vertical scrolling address. the first line appears
