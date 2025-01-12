@@ -753,7 +753,7 @@ void gfx_crle_run_differences(BufferProcessingState *state, uint8_t num_color_bi
 
 
 rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, const uint16_t *colors, uint8_t num_colors) {
-  alignment = 2;
+  alignment = 0;
   
     uint8_t num_color_bits = 2; //Need to be included in function call
     const GFXfont f = fonts[size];
@@ -1126,7 +1126,7 @@ rect_area_t gfx_compare_CrleBuffer(point_t start, fontSize_t size, textAlign_t a
 //Also test updated logic due to reseting to new byte for new line
 
 point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignment, const char *buf, uint8_t *encoded_buffer, uint16_t *colors, uint8_t num_colors) {
-  alignment = 2;
+  alignment = 0;
   
     uint8_t num_color_bits = 2; //Need to be included in function call
     const GFXfont f = fonts[size];
@@ -1235,10 +1235,7 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
             if (padding_before) {
                 //current_color = background_color;
                 run_length += padding_before;
-                while (run_length >= max_run_length) {
-                    encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
-                    run_length -= max_run_length;
-                }
+
             }
             reset_x = 0;
             for (unsigned i = start_char; i < len; i++) {
@@ -1264,16 +1261,19 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                 // Background padding: write "glyph.xAdvance" times black pixels for lines without data
                 if (yy < yo || yy >= yo + h) {
                     if (current_color != background_color && run_length > 0) { //Encode if we still have run_length of other color.
-                        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                        // Color Change - Encode the previous runs if needed
+                        while (run_length >= max_run_length)
+                        {
+                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                            run_length -= max_run_length;
+                        }
+                        if (run_length > 0) {
+                            encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                        }
                         run_length = 0;
                         current_color = background_color;
                     }
                     run_length += glyph.xAdvance;
-                    while (run_length >= max_run_length)
-                    {
-                        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
-                        run_length -= max_run_length;
-                    }
                 } else {
                     // Draw bitmap and handle padding
                     uint8_t bits = 0, bit = 0;
@@ -1288,7 +1288,7 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                     for (uint8_t xx = 0; xx < glyph.xAdvance; xx++) {
                         uint16_t pixel_color;
                         if ((xx < xo) || (xx >= (w + xo))) {   //Handle background padding: xoffset before char and "xAdvance - width" after char               
-                            pixel_color = background_color;  					// This is background padding, don't shift "bits"
+                            pixel_color = background_color;    //Don't shift "bits" as there is no data in the bitmap
                         } else {
                             pixel_color = ((bits & 0x80) >> 7) ? foreground_color : background_color;
                             bits <<= 1;       // Shift the bits left to process the next pixel
@@ -1298,13 +1298,13 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                         // Check if the pixel color is the same as the previous one
                         if (pixel_color == current_color) {
                             run_length++;                     //Same pixel color, one more repetition
-                            if (run_length == max_run_length) {
-                                // Encode the run
-                                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
-                                run_length = 0;
-                            }
                         } else {
-                            // Color Change - Encode the previous run if needed
+                            // Color Change - Encode the previous runs if needed
+                            while (run_length >= max_run_length)
+                            {
+                                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                                run_length -= max_run_length;
+                            }
                             if (run_length > 0) {
                                 encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
                             }
@@ -1322,21 +1322,29 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
             // Handle background padding when line_size is longer then the characters written
             if (line_size > (reset_x + padding_before)) {
                 if (current_color != background_color && run_length > 0) { //Encode first if we still have run_length of other color.
-                    encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                    while (run_length >= max_run_length) {
+                        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                        run_length -= max_run_length;
+                    }
+                    if (run_length > 0) {
+                        encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
+                        //run_length = 0;
+                    }
                     run_length = 0;
                     current_color = background_color;
                 }
                 run_length += line_size - reset_x - padding_before;   //Add all padding at once
-                while (run_length >= max_run_length) {
-                    encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
-                    run_length -= max_run_length;
-                }
             }
             //Start a new encoded byte when a new line starts. That will make compare easier. This will slightly increase size.
+            while (run_length >= max_run_length) {
+                encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (max_run_length - 1);
+                run_length -= max_run_length;
+            }
             if (run_length > 0) {
                 encoded_buffer[encoded_index++] = (current_color << color_shift_left) | (run_length - 1);
-                run_length = 0;
+                //run_length = 0;
             }
+            run_length = 0;
             yy++;
         }
 
@@ -1367,9 +1375,10 @@ point_t gfx_printtoBufferCRLE(point_t start, fontSize_t size, textAlign_t alignm
                 }
                 if (run_length > 0) { //Encode first if we still have run_length of other color.
                     encoded_buffer[encoded_index++] = ( current_color << color_shift_left) | (run_length - 1);
-                    run_length = 0;
+                    //run_length = 0;
                     //current_color = background_color;
                 }
+                run_length = 0;
             }
         }
     }
